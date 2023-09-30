@@ -43,7 +43,31 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
     return result
 
 
+def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
+    url = open("links for parsing.txt", "r").readlines()[1]  # образовательные возможности мат-меха
+    responce = requests.get(url)
+    result = bs4.BeautifulSoup(responce.content, "html.parser")
+    parse = bs4.BeautifulSoup(
+        str(result.find_all(name="div", attrs={"class": "panel panel-default"})),
+        "html.parser")  # блоки образовательных возможностей мат-меха
+
+    for panel_default in parse:
+        # название образовательного блока
+        title = bs4.BeautifulSoup(str(panel_default), "html.parser").find("a", attrs={"data-toggle": "collapse"})
+        if title is not None:
+            if title.text.strip() == "Bachelor Studies":
+                print(title.text.strip())
+                # проход по всем списочным элементам внутри данного блока
+                for elem in bs4.BeautifulSoup(
+                        str(panel_default), "html.parser").\
+                        find_all(name="li", attrs={"class": "common-list-item row"}):
+                    print(*filter(lambda x: len(x) > 0,
+                                  map(lambda x: x.strip(),
+                                      elem.text.strip().split(" "))))
+
+
 if __name__ == "__main__":
-    links_file = open("links for parsing.txt")
-    link = links_file.readline().strip()
-    pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
+    # links_file = open("links for parsing.txt")
+    # link = links_file.readline().strip()
+    # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
+    make_links_to_educational_directions()
