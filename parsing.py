@@ -43,6 +43,7 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
     return result
 
 
+# добавить сохранение в файл вместе с ссылками
 def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
     url = open("links for parsing.txt", "r").readlines()[1]  # образовательные возможности мат-меха
     responce = requests.get(url)
@@ -53,17 +54,22 @@ def make_links_to_educational_directions():  # пока что только Ма
 
     for panel_default in parse:
         # название образовательного блока
-        title = bs4.BeautifulSoup(str(panel_default), "html.parser").find("a", attrs={"data-toggle": "collapse"})
+        title = bs4.BeautifulSoup(str(panel_default), "html.parser").find("a", attrs={
+            "data-toggle": "collapse"})
         if title is not None:
             if title.text.strip() == "Bachelor Studies":
                 print(title.text.strip())
                 # проход по всем списочным элементам внутри данного блока
                 for elem in bs4.BeautifulSoup(
-                        str(panel_default), "html.parser").\
+                        str(panel_default), "html.parser"). \
                         find_all(name="li", attrs={"class": "common-list-item row"}):
-                    print(*filter(lambda x: len(x) > 0,
-                                  map(lambda x: x.strip(),
-                                      elem.text.strip().split(" "))))
+                    educational_program, *years = list(filter(lambda x: len(x) > 0,
+                                                              map(lambda x: x.strip(),
+                                                                  elem.text.strip().split(" "))))
+                    educational_links = list()
+                    for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
+                            find_all("a", attrs={"data-toggle": "tooltip"}):
+                        print(link.get("href"))
 
 
 if __name__ == "__main__":
