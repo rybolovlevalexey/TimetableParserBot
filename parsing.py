@@ -46,8 +46,8 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
 # добавить сохранение в файл вместе с ссылками
 def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
     url = open("links for parsing.txt", "r").readlines()[1]  # образовательные возможности мат-меха
-    responce = requests.get(url)
-    result = bs4.BeautifulSoup(responce.content, "html.parser")
+    resp = requests.get(url)
+    result = bs4.BeautifulSoup(resp.content, "html.parser")
     parse = bs4.BeautifulSoup(
         str(result.find_all(name="div", attrs={"class": "panel panel-default"})),
         "html.parser")  # блоки образовательных возможностей мат-меха
@@ -63,13 +63,22 @@ def make_links_to_educational_directions():  # пока что только Ма
                 for elem in bs4.BeautifulSoup(
                         str(panel_default), "html.parser"). \
                         find_all(name="li", attrs={"class": "common-list-item row"}):
-                    educational_program, *years = list(filter(lambda x: len(x) > 0,
-                                                              map(lambda x: x.strip(),
-                                                                  elem.text.strip().split(" "))))
-                    educational_links = list()
+                    educational_program, years = list(), list()
+                    sp = list(filter(lambda x: len(x) > 0,
+                                  map(lambda x: x.strip(),
+                                      elem.text.strip().split(" "))))
+                    for elem1 in sp:
+                        if elem1.isdigit():
+                            years.append(elem1)
+                        else:
+                            educational_program.append(elem1)
+                    educational_program = " ".join(educational_program)
+                    educational_links = dict()
                     for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
                             find_all("a", attrs={"data-toggle": "tooltip"}):
-                        print(link.get("href"))
+                        educational_links[educational_program + " " + link.text.strip()] = \
+                            link.get("href")
+                    print(educational_links)
 
 
 if __name__ == "__main__":
