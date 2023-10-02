@@ -1,13 +1,13 @@
-import peewee
+import peewee as pw
 
-database = peewee.SqliteDatabase("db.sqlite3")
+database = pw.SqliteDatabase("db.sqlite3")
 
 
-class EducationalDirection(peewee.Model):
-    id = peewee.PrimaryKeyField(unique=True)
-    name = peewee.CharField()
-    year = peewee.IntegerField()
-    url = peewee.CharField(max_length=512)
+class EducationalDirection(pw.Model):
+    id = pw.PrimaryKeyField(unique=True)
+    name = pw.CharField()
+    year = pw.IntegerField()
+    url = pw.CharField()
 
     class Meta:
         database = database

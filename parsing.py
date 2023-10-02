@@ -1,8 +1,9 @@
 import requests
 import bs4
-from pprint import pprint
 from datetime import date, timedelta
 import models
+import csv
+from pprint import pprint
 
 
 def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
@@ -47,8 +48,10 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
 # добавить сохранение в файл вместе с ссылками
 def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
     # очистка таблицы со ссылками на образовательные направления
-    # models.EducationalDirection().delete().execute()
-    url = open("links for parsing.txt", "r").readlines()[1]  # образовательные возможности мат-меха
+    models.EducationalDirection().delete().execute()
+    # образовательные возможности мат-меха
+    url = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
+               if elem.get("name") == "Faculty of Mathematics and Mechanics")[0].strip()
     resp = requests.get(url)
     result = bs4.BeautifulSoup(resp.content, "html.parser")
     parse = bs4.BeautifulSoup(
@@ -88,7 +91,7 @@ def make_links_to_educational_directions():  # пока что только Ма
 
 
 if __name__ == "__main__":
-    # links_file = open("links for parsing.txt")
-    # link = links_file.readline().strip()
-    # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
+    link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
+                if elem.get("name") == "Group tp22b07")[0].strip()
+    pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
     print(make_links_to_educational_directions())
