@@ -12,4 +12,16 @@ class EducationalDirection(pw.Model):
     class Meta:
         database = database
         order_by = "id"
-        db_table = "directions"
+        db_table = "programs directions"
+
+
+class GroupDirection(pw.Model):
+    id = pw.PrimaryKeyField(unique=True)
+    educational_program_id = pw.IntegerField()
+    group_name = pw.CharField()
+    url = pw.CharField()
+
+    class Meta:
+        database = database
+        order_by = "id"
+        db_table = "groups directions"

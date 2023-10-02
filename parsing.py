@@ -46,7 +46,7 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
 
 
 # добавить сохранение в файл вместе с ссылками
-def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
+def make_links_to_educational_directions() -> bool:  # пока что только Мат-Мех бакалавриат
     # очистка таблицы со ссылками на образовательные направления
     models.EducationalDirection().delete().execute()
     # образовательные возможности мат-меха
@@ -87,11 +87,35 @@ def make_links_to_educational_directions():  # пока что только Ма
                                                         url="https://timetable.spbu.ru" +
                                                             link.get("href")).save()
 
-    return "Ok"
+    return True
+
+
+# наполнение базы данных ссылками на конкретные группы
+def make_links_to_groups():
+    # if make_links_to_educational_directions():
+    #     print(f"Таблица 'programs directions' наполнена ссылками корректно")
+    for line in models.EducationalDirection.select():  # ссылки на конкретное направление
+        # страница с группами
+        parser = bs4.BeautifulSoup(requests.get(line.url).content, "html.parser")
+        # блоки -
+        for block in parser.find_all(name="div",
+                                    attrs={"class": "panel panel-default"}):
+            # текущий учебный семестр, аттестация, аттестация(долги), ...
+            title = bs4.BeautifulSoup(str(block), "html.parser")\
+                .find("a", attrs={"data-toggle": "collapse"}).text.strip()
+            if title == "Current academic year 2023-2024":
+                groups_info = bs4.BeautifulSoup(str(block), "html.parser")\
+                    .find_all("div", attrs={"class": "tile"})
+                for group in groups_info:
+                    group_name = group.text.strip().split()[0]
+                    group_url = group.get("onclick")
+                    start, finish = group_url.find("'"), len(group_url) - "".join(reversed(group_url)).find("'")
+                    print(group_name, f"https://timetable.spbu.ru{group_url[start + 1: finish - 1]}")
+        return
 
 
 if __name__ == "__main__":
-    link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
-                if elem.get("name") == "Group tp22b07")[0].strip()
-    pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
-    print(make_links_to_educational_directions())
+    # link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
+    #             if elem.get("name") == "Group tp22b07")[0].strip()
+    # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
+    print(make_links_to_groups())
