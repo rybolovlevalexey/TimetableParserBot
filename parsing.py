@@ -86,18 +86,17 @@ def make_links_to_educational_directions() -> bool:  # пока что толь�
                                                         year=link.text.strip(),
                                                         url="https://timetable.spbu.ru" +
                                                             link.get("href")).save()
-
     return True
 
 
 # наполнение базы данных ссылками на конкретные группы
-def make_links_to_groups():
+def make_links_to_groups() -> bool:
     # if make_links_to_educational_directions():
     #     print(f"Таблица 'programs directions' наполнена ссылками корректно")
     for line in models.EducationalDirection.select():  # ссылки на конкретное направление
         # страница с группами
         parser = bs4.BeautifulSoup(requests.get(line.url).content, "html.parser")
-        # блоки -
+        # блоки
         for block in parser.find_all(name="div",
                                     attrs={"class": "panel panel-default"}):
             # текущий учебный семестр, аттестация, аттестация(долги), ...
@@ -110,12 +109,15 @@ def make_links_to_groups():
                     group_name = group.text.strip().split()[0]
                     group_url = group.get("onclick")
                     start, finish = group_url.find("'"), len(group_url) - "".join(reversed(group_url)).find("'")
-                    print(group_name, f"https://timetable.spbu.ru{group_url[start + 1: finish - 1]}")
-        return
+                    models.GroupDirection(educational_program_id=line.id,
+                                          group_name=group_name,
+                                          url=f"https://timetable.spbu.ru"
+                                              f"{group_url[start + 1: finish - 1]}").save()
+    return True
 
 
 if __name__ == "__main__":
+    pass
     # link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
     #             if elem.get("name") == "Group tp22b07")[0].strip()
     # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
-    print(make_links_to_groups())
