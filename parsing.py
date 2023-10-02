@@ -2,6 +2,7 @@ import requests
 import bs4
 from pprint import pprint
 from datetime import date, timedelta
+import models
 
 
 def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
@@ -45,6 +46,8 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
 
 # добавить сохранение в файл вместе с ссылками
 def make_links_to_educational_directions():  # пока что только Мат-Мех бакалавриат
+    # очистка таблицы со ссылками на образовательные направления
+    # models.EducationalDirection().delete().execute()
     url = open("links for parsing.txt", "r").readlines()[1]  # образовательные возможности мат-меха
     resp = requests.get(url)
     result = bs4.BeautifulSoup(resp.content, "html.parser")
@@ -58,15 +61,14 @@ def make_links_to_educational_directions():  # пока что только Ма
             "data-toggle": "collapse"})
         if title is not None:
             if title.text.strip() == "Bachelor Studies":
-                print(title.text.strip())
                 # проход по всем списочным элементам внутри данного блока
                 for elem in bs4.BeautifulSoup(
                         str(panel_default), "html.parser"). \
                         find_all(name="li", attrs={"class": "common-list-item row"}):
                     educational_program, years = list(), list()
                     sp = list(filter(lambda x: len(x) > 0,
-                                  map(lambda x: x.strip(),
-                                      elem.text.strip().split(" "))))
+                                     map(lambda x: x.strip(),
+                                         elem.text.strip().split(" "))))
                     for elem1 in sp:
                         if elem1.isdigit():
                             years.append(elem1)
@@ -74,15 +76,19 @@ def make_links_to_educational_directions():  # пока что только Ма
                             educational_program.append(elem1)
                     educational_program = " ".join(educational_program)
                     educational_links = dict()
-                    for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
-                            find_all("a", attrs={"data-toggle": "tooltip"}):
-                        educational_links[educational_program + " " + link.text.strip()] = \
-                            link.get("href")
-                    print(educational_links)
+                    with models.database:
+                        for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
+                                find_all("a", attrs={"data-toggle": "tooltip"}):
+                            models.EducationalDirection(name=educational_program,
+                                                        year=link.text.strip(),
+                                                        url="https://timetable.spbu.ru" +
+                                                            link.get("href")).save()
+
+    return "Ok"
 
 
 if __name__ == "__main__":
     # links_file = open("links for parsing.txt")
     # link = links_file.readline().strip()
     # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
-    make_links_to_educational_directions()
+    print(make_links_to_educational_directions())
