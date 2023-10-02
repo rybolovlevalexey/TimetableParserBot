@@ -1,6 +1,6 @@
 import peewee
 
-db = peewee.SqliteDatabase("db.sqlite3")
+database = peewee.SqliteDatabase("db.sqlite3")
 
 
 class EducationalDirection(peewee.Model):
@@ -10,6 +10,6 @@ class EducationalDirection(peewee.Model):
     url = peewee.CharField(max_length=512)
 
     class Meta:
-        database = db
+        database = database
         order_by = "id"
         db_table = "directions"
