@@ -1,39 +1,39 @@
+import asyncio
+import logging
+
 from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
-from aiogram.types import Message
+#from config_data.config import Config, load_config
+#from handlers import other_handlers, user_handlers
 
-# Вместо BOT TOKEN HERE нужно вставить токен вашего бота,
-# полученный у @BotFather
-BOT_TOKEN = open("personal information.txt", "r").readline().strip()
-
-# Создаем объекты бота и диспетчера
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+logger = logging.getLogger(__name__)
 
 
-# Этот хэндлер будет срабатывать на команду "/start"
-async def process_start_command(message: Message):
-    await message.answer('Привет!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
+# Функция конфигурирования и запуска бота
+async def main():
+    # Конфигурируем логирование
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(filename)s:%(lineno)d #%(levelname)-8s '
+               '[%(asctime)s] - %(name)s - %(message)s')
 
+    # Выводим в консоль информацию о начале запуска бота
+    logger.info('Starting bot')
 
-# Этот хэндлер будет срабатывать на команду "/help"
-async def process_help_command(message: Message):
-    await message.answer(
-        'Напиши мне что-нибудь и в ответ '
-        'я пришлю тебе твое сообщение'
-    )
+    # Загружаем конфиг в переменную config
+    config: Config = load_config()
 
+    # Инициализируем бот и диспетчер
+    bot = Bot(token=config.tg_bot.token,
+              parse_mode='HTML')
+    dp = Dispatcher()
 
-# Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
-# кроме команд "/start" и "/help"
-async def send_echo(message: Message):
-    await message.answer(text=message.text)
+    # Регистриуем роутеры в диспетчере
+    dp.include_router(user_handlers.router)
+    dp.include_router(other_handlers.router)
 
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
-# Регистрируем хэндлеры
-dp.message.register(process_start_command, Command(commands='start'))
-dp.message.register(process_help_command, Command(commands='help'))
-dp.message.register(send_echo)
 
 if __name__ == '__main__':
-    dp.run_polling(bot)
+    asyncio.run(main())

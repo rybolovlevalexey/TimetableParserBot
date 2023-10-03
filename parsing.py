@@ -4,6 +4,17 @@ from datetime import date, timedelta
 import models
 import csv
 from pprint import pprint
+from dataclasses import dataclass
+
+
+@dataclass
+class EducationalDirectionLine:
+    name: str
+    year: int
+    url: str
+
+    def __str__(self):
+        return f"{self.name} {self.year} {self.url}"
 
 
 def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
@@ -45,10 +56,20 @@ def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
     return result
 
 
-# добавить сохранение в файл вместе с ссылками
-def make_links_to_educational_directions() -> bool:  # пока что только Мат-Мех бакалавриат
+def load_links_to_educational_directions():
     # очистка таблицы со ссылками на образовательные направления
-    models.EducationalDirection().delete().execute()
+    # models.EducationalDirection().delete().execute()
+
+    with models.database:
+        for elem in make_links_to_educational_directions():
+            models.EducationalDirection(name=elem.name,
+                                        year=elem.year,
+                                        url=elem.url).save()
+
+
+def make_links_to_educational_directions() -> list[EducationalDirectionLine]:
+    # пока что только Мат-Мех бакалавриат
+    func_result = list()
     # образовательные возможности мат-меха
     url = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
                if elem.get("name") == "Faculty of Mathematics and Mechanics")[0].strip()
@@ -78,15 +99,13 @@ def make_links_to_educational_directions() -> bool:  # пока что толь�
                         else:
                             educational_program.append(elem1)
                     educational_program = " ".join(educational_program)
-                    educational_links = dict()
-                    with models.database:
-                        for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
-                                find_all("a", attrs={"data-toggle": "tooltip"}):
-                            models.EducationalDirection(name=educational_program,
-                                                        year=link.text.strip(),
-                                                        url="https://timetable.spbu.ru" +
-                                                            link.get("href")).save()
-    return True
+                    for link in bs4.BeautifulSoup(str(elem), "html.parser"). \
+                            find_all("a", attrs={"data-toggle": "tooltip"}):
+                        func_result.append(EducationalDirectionLine(name=educational_program,
+                                                                    year=link.text.strip(),
+                                                                    url="https://timetable.spbu.ru" +
+                                                                        link.get("href")))
+    return func_result
 
 
 # наполнение базы данных ссылками на конкретные группы
@@ -98,17 +117,18 @@ def make_links_to_groups() -> bool:
         parser = bs4.BeautifulSoup(requests.get(line.url).content, "html.parser")
         # блоки
         for block in parser.find_all(name="div",
-                                    attrs={"class": "panel panel-default"}):
+                                     attrs={"class": "panel panel-default"}):
             # текущий учебный семестр, аттестация, аттестация(долги), ...
-            title = bs4.BeautifulSoup(str(block), "html.parser")\
+            title = bs4.BeautifulSoup(str(block), "html.parser") \
                 .find("a", attrs={"data-toggle": "collapse"}).text.strip()
             if title == "Current academic year 2023-2024":
-                groups_info = bs4.BeautifulSoup(str(block), "html.parser")\
+                groups_info = bs4.BeautifulSoup(str(block), "html.parser") \
                     .find_all("div", attrs={"class": "tile"})
                 for group in groups_info:
                     group_name = group.text.strip().split()[0]
                     group_url = group.get("onclick")
-                    start, finish = group_url.find("'"), len(group_url) - "".join(reversed(group_url)).find("'")
+                    start, finish = group_url.find("'"), len(group_url) - "".join(
+                        reversed(group_url)).find("'")
                     models.GroupDirection(educational_program_id=line.id,
                                           group_name=group_name,
                                           url=f"https://timetable.spbu.ru"
@@ -117,7 +137,7 @@ def make_links_to_groups() -> bool:
 
 
 if __name__ == "__main__":
-    pass
+    print(make_links_to_educational_directions())
     # link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
     #             if elem.get("name") == "Group tp22b07")[0].strip()
     # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))

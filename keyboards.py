@@ -5,8 +5,8 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 # ------- Создаем клавиатуру через ReplyKeyboardBuilder -------
 
 # Создаем кнопки с ответами согласия и отказа
-button_yes = KeyboardButton(text=LEXICON_RU['yes_button'])
-button_no = KeyboardButton(text=LEXICON_RU['no_button'])
+button_yes = KeyboardButton(text="YES")
+button_no = KeyboardButton(text="NO")
 
 # Инициализируем билдер для клавиатуры с кнопками "Давай" и "Не хочу!"
 yes_no_kb_builder = ReplyKeyboardBuilder()
@@ -23,12 +23,10 @@ yes_no_kb: ReplyKeyboardMarkup = yes_no_kb_builder.as_markup(
 # ------- Создаем игровую клавиатуру без использования билдера -------
 
 # Создаем кнопки игровой клавиатуры
-button_1 = KeyboardButton(text=LEXICON_RU['rock'])
-button_2 = KeyboardButton(text=LEXICON_RU['scissors'])
-button_3 = KeyboardButton(text=LEXICON_RU['paper'])
+button_1 = KeyboardButton(text="На сегодня")
+button_2 = KeyboardButton(text="На завтра")
+button_3 = KeyboardButton(text="На неделю")
 
-# Создаем игровую клавиатуру с кнопками "Камень 🗿",
-# "Ножницы ✂" и "Бумага 📜" как список списков
 game_kb = ReplyKeyboardMarkup(
     keyboard=[[button_1],
               [button_2],
