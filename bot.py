@@ -5,14 +5,14 @@ flags_dict: dict[str, bool] = dict()
 flags_dict["choosing_group_flag"] = False
 
 
-@bot.callback_query_handler(func=lambda call: call.data in ["2020", "2021", "2022", "2023"])
+@bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
 def callback_year(callback: telebot.types.CallbackQuery):
-    bot.send_message(callback.message.chat.id, "ok")
-    print("HERE")
-    if callback.data == "2020":
-        print("year 2020")
-    else:
-        print(callback.data)
+    bot.send_message(callback.message.chat.id, f"Год вашего поступления на текущую "
+                                               f"образовательныу программу - {callback.data}")
+    year = callback.data  # год поступления пользователя
+    user_full_name = callback.message.from_user.full_name
+    user_id = callback.message.from_user.id
+    user_login = callback.message.from_user.username
 
 
 @bot.message_handler(commands=["start"])

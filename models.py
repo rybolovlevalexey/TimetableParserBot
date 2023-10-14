@@ -1,6 +1,19 @@
 import peewee as pw
 
-database = pw.SqliteDatabase("db.sqlite3")
+db = pw.SqliteDatabase("db.sqlite3")
+
+
+class User(pw.Model):
+    id = pw.PrimaryKeyField(unique=True)
+    user_full_name = pw.CharField()
+    user_id = pw.CharField()
+    user_login = pw.CharField()
+    group_url = pw.CharField()
+
+    class Meta:
+        database = db
+        order_by = "id"
+        db_table = "Telegram users"
 
 
 class EducationalDirection(pw.Model):
@@ -10,9 +23,9 @@ class EducationalDirection(pw.Model):
     url = pw.CharField()
 
     class Meta:
-        database = database
+        database = db
         order_by = "id"
-        db_table = "programs directions"
+        db_table = "Programs directions"
 
 
 class GroupDirection(pw.Model):
@@ -22,6 +35,6 @@ class GroupDirection(pw.Model):
     url = pw.CharField()
 
     class Meta:
-        database = database
+        database = db
         order_by = "id"
-        db_table = "groups directions"
+        db_table = "Groups directions"
