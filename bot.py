@@ -15,11 +15,23 @@ INSTITUTE_FACULTIES = ["Мат-мех"]
 #print("done")
 
 
+@bot.callback_query_handler(func=lambda call: call.data in INSTITUTE_FACULTIES)
+def callback_faculty(callback: telebot.types.CallbackQuery):
+    # получение информации о факультете пользователя
+    faculty = callback.data
+    bot.send_message(callback.message.chat.id, f"Ваш факультет - {faculty}")
+    user_full_name, user_id = callback.from_user.full_name, callback.from_user.id
+    us_id = callback.from_user.id
+    # обновление информации в базе данных
+    query = User.update(user_faculty=faculty).where(user_id == us_id)
+    query.execute()
+
+
 @bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
 def callback_year(callback: telebot.types.CallbackQuery):
     # отправка ответного сообщения пользователю
     bot.send_message(callback.message.chat.id, f"Год вашего поступления на текущую "
-                                               f"образовательныу программу - {callback.data}")
+                                               f"образовательную программу - {callback.data}")
     # получение информации о пользователе
     year = callback.data  # год поступления пользователя
     user_full_name = callback.from_user.full_name
@@ -29,6 +41,7 @@ def callback_year(callback: telebot.types.CallbackQuery):
     query = User.insert(user_id=user_id, user_full_name=user_full_name, user_login=user_login,
                         admission_year=year)
     query.execute()
+
     # отправка следующего сообщения, чтобы узнать факультет
     markup = telebot.types.InlineKeyboardMarkup()
     for i in range(0, len(INSTITUTE_FACULTIES), 2):
