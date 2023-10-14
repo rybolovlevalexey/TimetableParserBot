@@ -67,8 +67,8 @@ def load_links_to_educational_directions():
                                         url=elem.url).save()
 
 
+# создание списка со ссылками на образовательные направления, пока что только Мат-Мех бакалавриат
 def make_links_to_educational_directions() -> list[EducationalDirectionLine]:
-    # пока что только Мат-Мех бакалавриат
     func_result = list()
     # образовательные возможности мат-меха
     url = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))

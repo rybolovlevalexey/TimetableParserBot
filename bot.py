@@ -1,39 +1,32 @@
-import asyncio
-import logging
+import telebot
 
-from aiogram import Bot, Dispatcher
-#from config_data.config import Config, load_config
-#from handlers import other_handlers, user_handlers
-
-logger = logging.getLogger(__name__)
+bot = telebot.TeleBot(open("personal information.txt").readline().strip())
+choosing_group_flag = False
 
 
-# Функция конфигурирования и запуска бота
-async def main():
-    # Конфигурируем логирование
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(filename)s:%(lineno)d #%(levelname)-8s '
-               '[%(asctime)s] - %(name)s - %(message)s')
-
-    # Выводим в консоль информацию о начале запуска бота
-    logger.info('Starting bot')
-
-    # Загружаем конфиг в переменную config
-    config: Config = load_config()
-
-    # Инициализируем бот и диспетчер
-    bot = Bot(token=config.tg_bot.token,
-              parse_mode='HTML')
-    dp = Dispatcher()
-
-    # Регистриуем роутеры в диспетчере
-    dp.include_router(user_handlers.router)
-    dp.include_router(other_handlers.router)
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+@bot.message_handler(commands=["start"])
+def main(message: telebot.types.Message):
+    bot.send_message(message.chat.id, "Бот начал работу")
 
 
-if __name__ == '__main__':
-    asyncio.run(main())
+@bot.message_handler(commands=["choose_group"])
+def choose_group_message(message: telebot.types.Message):
+    bot.send_message(message.chat.id, "Введите название вашей группы")
+    global choosing_group_flag
+    choosing_group_flag = True
+
+
+@bot.message_handler()
+def take_message(message: telebot.types.Message):
+    global choosing_group_flag
+    user_full_name = message.from_user.full_name
+    user_id = message.from_user.id
+    user_login = message.from_user.username
+    if choosing_group_flag:
+        choosing_group_flag = False
+        group_name = message.text
+
+
+
+if __name__ == "__main__":
+    bot.polling(none_stop=True)
