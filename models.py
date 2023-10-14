@@ -8,7 +8,10 @@ class User(pw.Model):
     user_full_name = pw.CharField()
     user_id = pw.CharField()
     user_login = pw.CharField()
-    group_url = pw.CharField()
+    group_url = pw.CharField(default="default_url")
+    admission_year = pw.CharField(default="default_year")
+    user_faculty = pw.CharField(default="default_faculty")
+    group_number = pw.CharField(default="default_group_number")
 
     class Meta:
         database = db
