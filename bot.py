@@ -1,7 +1,6 @@
 import telebot
 import peewee as pw
-from models import User
-
+from models import User, EducationalDirection, GroupDirection
 
 db = pw.SqliteDatabase("db.sqlite3")
 bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())
@@ -9,19 +8,42 @@ flags_dict: dict[str, bool] = dict()
 flags_dict["choosing_group_flag"] = False
 INSTITUTE_FACULTIES = ["Мат-мех"]
 EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]
+EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
+EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
+
 
 # выполнять каждый раз при тестировании и создании бота
-#db.drop_tables([User])
-#db.create_tables([User])
-#print("done")
+db.drop_tables([User])
+db.create_tables([User])
+print("done")
+
+
+@bot.callback_query_handler(func=lambda call: call.data in EDUCATION_PROGRAMS_SHORT)
+def callback_program(callback: telebot.types.CallbackQuery):
+    program = callback.data
+    bot.send_message(callback.message.chat.id, f"Ваше направление образования - {program}")
+    us_id = callback.from_user.id
+    User.update(education_program=program).where(User.user_id == us_id).execute()
+    program_name = list(elem for elem in EDUCATION_PROGRAMS if str(elem).startswith(program))[0]
+    available_groups = list(elem for elem in GroupDirection.select(GroupDirection.group_name).where(
+        GroupDirection.educational_program_id == EducationalDirection.select(
+            EducationalDirection.id).where(EducationalDirection.name == program_name and EducationalDirection.year == User.select(User.admission_year).where(User.user_id == us_id))))
+    print(available_groups)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in EDUCATION_DEGREES)
 def callback_degree(callback: telebot.types.CallbackQuery):
     degree = callback.data
-    bot.send_message(callback.message.chat.id, f"Ваша получаемая степень образования - {degree}")
+    chat_id = callback.message.chat.id
+    bot.send_message(chat_id, f"Ваша получаемая степень образования - {degree}")
     us_id = callback.from_user.id
     User.update(education_degree=degree).where(User.user_id == us_id).execute()
+    markup = telebot.types.InlineKeyboardMarkup()
+    for name in EDUCATION_PROGRAMS_SHORT:
+        markup.row(telebot.types.InlineKeyboardButton(text=str(name),
+                                                      callback_data=str(name)))
+    bot.send_message(chat_id, "Выберите ваше образовательное направление",
+                     reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in INSTITUTE_FACULTIES)
@@ -34,11 +56,11 @@ def callback_faculty(callback: telebot.types.CallbackQuery):
     query = User.update(user_faculty=faculty).where(User.user_id == us_id)
     query.execute()
     bot.send_message(callback.message.chat.id, "Выберите получаемую степень образования",
-                     reply_markup=telebot.types.InlineKeyboardMarkup().\
-                        row(telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[0],
-                                                               callback_data=EDUCATION_DEGREES[0]),
-                            telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[1],
-                                                               callback_data=EDUCATION_DEGREES[1])))
+                     reply_markup=telebot.types.InlineKeyboardMarkup(). \
+                     row(telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[0],
+                                                            callback_data=EDUCATION_DEGREES[0]),
+                         telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[1],
+                                                            callback_data=EDUCATION_DEGREES[1])))
 
 
 @bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
