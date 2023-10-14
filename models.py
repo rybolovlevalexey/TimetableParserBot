@@ -12,6 +12,7 @@ class User(pw.Model):
     admission_year = pw.CharField(default="default_year")
     user_faculty = pw.CharField(default="default_faculty")
     group_number = pw.CharField(default="default_group_number")
+    education_degree = pw.CharField(default="default_degree")
 
     class Meta:
         database = db

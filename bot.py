@@ -8,6 +8,7 @@ bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())
 flags_dict: dict[str, bool] = dict()
 flags_dict["choosing_group_flag"] = False
 INSTITUTE_FACULTIES = ["Мат-мех"]
+EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]
 
 # выполнять каждый раз при тестировании и создании бота
 #db.drop_tables([User])
@@ -15,16 +16,29 @@ INSTITUTE_FACULTIES = ["Мат-мех"]
 #print("done")
 
 
+@bot.callback_query_handler(func=lambda call: call.data in EDUCATION_DEGREES)
+def callback_degree(callback: telebot.types.CallbackQuery):
+    degree = callback.data
+    bot.send_message(callback.message.chat.id, f"Ваша получаемая степень образования - {degree}")
+    us_id = callback.from_user.id
+    User.update(education_degree=degree).where(User.user_id == us_id).execute()
+
+
 @bot.callback_query_handler(func=lambda call: call.data in INSTITUTE_FACULTIES)
 def callback_faculty(callback: telebot.types.CallbackQuery):
     # получение информации о факультете пользователя
     faculty = callback.data
     bot.send_message(callback.message.chat.id, f"Ваш факультет - {faculty}")
-    user_full_name, user_id = callback.from_user.full_name, callback.from_user.id
     us_id = callback.from_user.id
     # обновление информации в базе данных
-    query = User.update(user_faculty=faculty).where(user_id == us_id)
+    query = User.update(user_faculty=faculty).where(User.user_id == us_id)
     query.execute()
+    bot.send_message(callback.message.chat.id, "Выберите получаемую степень образования",
+                     reply_markup=telebot.types.InlineKeyboardMarkup().\
+                        row(telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[0],
+                                                               callback_data=EDUCATION_DEGREES[0]),
+                            telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[1],
+                                                               callback_data=EDUCATION_DEGREES[1])))
 
 
 @bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
