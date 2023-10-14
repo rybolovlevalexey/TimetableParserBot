@@ -11,11 +11,10 @@ EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
 
-
 # выполнять каждый раз при тестировании и создании бота
 db.drop_tables([User])
 db.create_tables([User])
-print("done")
+print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call: call.data in EDUCATION_PROGRAMS_SHORT)
@@ -25,10 +24,22 @@ def callback_program(callback: telebot.types.CallbackQuery):
     us_id = callback.from_user.id
     User.update(education_program=program).where(User.user_id == us_id).execute()
     program_name = list(elem for elem in EDUCATION_PROGRAMS if str(elem).startswith(program))[0]
-    available_groups = list(elem for elem in GroupDirection.select(GroupDirection.group_name).where(
-        GroupDirection.educational_program_id == EducationalDirection.select(
-            EducationalDirection.id).where(EducationalDirection.name == program_name and EducationalDirection.year == User.select(User.admission_year).where(User.user_id == us_id))))
-    print(available_groups)
+    year = list(elem.admission_year for elem in User.select().where(User.user_id == us_id))[0]
+
+    prog_id = list(elem.id for elem in EducationalDirection.select().where(
+        (EducationalDirection.name == program_name) & (EducationalDirection.year == year)))[0]
+    available_groups = list(elem.group_name for elem in GroupDirection.select().where(
+        GroupDirection.educational_program_id == prog_id))
+    markup = telebot.types.InlineKeyboardMarkup()
+    for i in range(0, len(available_groups), 2):
+        if i + 1 == len(available_groups):
+            markup.row(telebot.types.InlineKeyboardButton(available_groups[i]))
+        else:
+            markup.row(telebot.types.InlineKeyboardButton(text=available_groups[i],
+                                                          callback_data=available_groups[i]),
+                       telebot.types.InlineKeyboardButton(text=available_groups[i + 1],
+                                                          callback_data=available_groups[i + 1]))
+    bot.send_message(callback.message.chat.id, "Выберите вашу группу", reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in EDUCATION_DEGREES)
