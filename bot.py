@@ -13,9 +13,9 @@ EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.selec
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
 
 # выполнять каждый раз при тестировании и создании бота
-# db.drop_tables([User])
-# db.create_tables([User])
-# print("Database has been cleared and recreated")
+db.drop_tables([User])
+db.create_tables([User])
+print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
@@ -26,6 +26,10 @@ def callback_group_name(callback: telebot.types.CallbackQuery):
     User.update(group_number=group_name).where(User.user_id == us_id).execute()
     bot.send_message(callback.message.chat.id, f"Ваша группа - {group_name}. "
                                                f"Информация о вашей группе сохранена")
+    url = list(elem.url for elem in
+               GroupDirection.select().
+               where(GroupDirection.group_name == group_name))[0]
+    User.update(group_url=url).where(User.user_id == us_id).execute()
 
 
 @bot.callback_query_handler(func=lambda call: call.data in EDUCATION_PROGRAMS_SHORT)
@@ -116,8 +120,21 @@ def callback_year(callback: telebot.types.CallbackQuery):
 
 
 @bot.message_handler(commands=["start"])
-def main(message: telebot.types.Message):
-    bot.send_message(message.chat.id, "Бот начал работу")
+def start_message(message: telebot.types.Message):
+    markup = telebot.types.ReplyKeyboardMarkup()
+    markup.row(telebot.types.KeyboardButton("Расписание на сегодня"),
+               telebot.types.KeyboardButton("Расписание на завтра"))
+    markup.row(telebot.types.KeyboardButton("Расписание на текущую неделю"),
+               telebot.types.KeyboardButton("Расписание на следующую неделю"))
+    bot.send_message(message.chat.id, "Бот начал работу", reply_markup=markup)
+    bot.register_next_step_handler(message, schedule_on_click)
+
+
+def schedule_on_click(message: telebot.types.Message):
+    if message.text == "Расписание на сегодня":
+        pass
+    elif message.text == "Расписание на завтра":
+        pass
 
 
 @bot.message_handler(commands=["choose_group"])
