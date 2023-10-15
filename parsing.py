@@ -3,8 +3,8 @@ import bs4
 from datetime import date, timedelta
 import models
 import csv
-from pprint import pprint
 from dataclasses import dataclass
+from pprint import pprint
 
 
 @dataclass
@@ -31,9 +31,9 @@ def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
         block = bs4.BeautifulSoup(str(elem), "html.parser")
         day = block.find(name="h4").text.strip()
         timetable[day] = list()
-        for elem in block.select(".panel-collapse > .common-list-item"):
+        for elem1 in block.select(".panel-collapse > .common-list-item"):
             info = list(filter(lambda x: len(x) > 0,
-                               map(lambda x: x.strip(), elem.text.strip().split("\n"))))
+                               map(lambda x: x.strip(), elem1.text.strip().split("\n"))))
             timetable[day].append(info)
     return timetable
 
@@ -60,7 +60,7 @@ def load_links_to_educational_directions():
     # очистка таблицы со ссылками на образовательные направления
     # models.EducationalDirection().delete().execute()
 
-    with models.database:
+    with models.db:
         for elem in make_links_to_educational_directions():
             models.EducationalDirection(name=elem.name,
                                         year=elem.year,
@@ -137,7 +137,4 @@ def make_links_to_groups() -> bool:
 
 
 if __name__ == "__main__":
-    print(make_links_to_educational_directions())
-    # link = list(elem.get("url") for elem in csv.DictReader(open("links for parsing.csv", "r"))
-    #             if elem.get("name") == "Group tp22b07")[0].strip()
-    # pprint(removing_unnecessary_items(week_timetable_dict(link, True)))
+    pprint(week_timetable_dict("https://timetable.spbu.ru/MATH/StudentGroupEvents/Primary/366763"))

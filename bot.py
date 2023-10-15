@@ -1,6 +1,8 @@
 import telebot
 import peewee as pw
 from models import User, EducationalDirection, GroupDirection
+from parsing import week_timetable_dict, removing_unnecessary_items
+from datetime import datetime
 import re
 
 db = pw.SqliteDatabase("db.sqlite3")
@@ -13,9 +15,9 @@ EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.selec
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
 
 # выполнять каждый раз при тестировании и создании бота
-db.drop_tables([User])
-db.create_tables([User])
-print("Database has been cleared and recreated")
+#db.drop_tables([User])
+#db.create_tables([User])
+#print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
@@ -121,20 +123,12 @@ def callback_year(callback: telebot.types.CallbackQuery):
 
 @bot.message_handler(commands=["start"])
 def start_message(message: telebot.types.Message):
-    markup = telebot.types.ReplyKeyboardMarkup()
-    markup.row(telebot.types.KeyboardButton("Расписание на сегодня"),
-               telebot.types.KeyboardButton("Расписание на завтра"))
-    markup.row(telebot.types.KeyboardButton("Расписание на текущую неделю"),
-               telebot.types.KeyboardButton("Расписание на следующую неделю"))
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=False)
+    markup.row(telebot.types.KeyboardButton("На сегодня"),
+               telebot.types.KeyboardButton("На завтра"))
+    markup.row(telebot.types.KeyboardButton("На текущую неделю"),
+               telebot.types.KeyboardButton("На следующую неделю"))
     bot.send_message(message.chat.id, "Бот начал работу", reply_markup=markup)
-    bot.register_next_step_handler(message, schedule_on_click)
-
-
-def schedule_on_click(message: telebot.types.Message):
-    if message.text == "Расписание на сегодня":
-        pass
-    elif message.text == "Расписание на завтра":
-        pass
 
 
 @bot.message_handler(commands=["choose_group"])
@@ -153,12 +147,31 @@ def choose_group_message(message: telebot.types.Message):
 @bot.message_handler()
 def take_message(message: telebot.types.Message):
     user_full_name = message.from_user.full_name
-    user_id = message.from_user.id
-    user_login = message.from_user.username
-    print(user_full_name, user_id, user_login)
-    if flags_dict["choosing_group_flag"]:
-        flags_dict["choosing_group_flag"] = False
-        group_name = message.text
+    us_id, user_login = message.from_user.id, message.from_user.username
+    day, month, year = str(datetime.today()).split()[0].split("-")[::-1]
+    # проверка, есть ли такой пользователь в базе данных
+    is_user_registred = False
+    for elem in User.select():
+        if str(elem.user_id) == str(us_id):
+            is_user_registred = True
+            break
+    if not is_user_registred:
+        bot.send_message(message.chat.id, "Вы не зарегистрированы, "
+                                          "сделать это можно, используя команду /choose_group")
+        return None
+    schedule = removing_unnecessary_items(week_timetable_dict(list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]))
+    if message.text == "На сегодня":
+        key = list(schedule.keys())[0] if len(list(k for k in schedule.keys() if k.endswith(day))) == 0 else list(k for k in schedule.keys() if k.endswith(day))[0]
+        output = ""
+        for elem in schedule[key]:
+            output += elem[1] + " " + elem[0] + "\n\n"
+        bot.send_message(message.chat.id, output)
+    elif message.text == "На завтра":
+        pass
+    elif message.text == "На текущую неделю":
+        pass
+    elif message.text == "На следующую неделю":
+        pass
 
 
 if __name__ == "__main__":
