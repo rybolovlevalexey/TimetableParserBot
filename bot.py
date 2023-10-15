@@ -1,6 +1,7 @@
 import telebot
 import peewee as pw
 from models import User, EducationalDirection, GroupDirection
+import re
 
 db = pw.SqliteDatabase("db.sqlite3")
 bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())
@@ -12,9 +13,19 @@ EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.selec
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
 
 # выполнять каждый раз при тестировании и создании бота
-db.drop_tables([User])
-db.create_tables([User])
-print("Database has been cleared and recreated")
+# db.drop_tables([User])
+# db.create_tables([User])
+# print("Database has been cleared and recreated")
+
+
+@bot.callback_query_handler(func=lambda call:
+        re.search(r"[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
+def callback_group_name(callback: telebot.types.CallbackQuery):
+    group_name = callback.data
+    us_id = callback.from_user.id
+    User.update(group_number=group_name).where(User.user_id == us_id).execute()
+    bot.send_message(callback.message.chat.id, f"Ваша группа - {group_name}. "
+                                               f"Информация о вашей группе сохранена")
 
 
 @bot.callback_query_handler(func=lambda call: call.data in EDUCATION_PROGRAMS_SHORT)
