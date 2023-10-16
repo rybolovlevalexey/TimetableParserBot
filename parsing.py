@@ -21,6 +21,8 @@ def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
     if next_week:
         today = date.today()
         days_to_monday = (7 - today.weekday()) % 7
+        if days_to_monday == 0:
+            days_to_monday = 7
         next_monday = today + timedelta(days=days_to_monday)
         url += f"/{next_monday}"
     responce = requests.get(url)

@@ -159,20 +159,36 @@ def take_message(message: telebot.types.Message):
         bot.send_message(message.chat.id, "Вы не зарегистрированы, "
                                           "сделать это можно, используя команду /choose_group")
         return None
-    schedule = removing_unnecessary_items(week_timetable_dict(
-        list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]))
+    url = list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]
 
     if message.text == "На сегодня":
+        schedule = removing_unnecessary_items(week_timetable_dict(url))
         day, month, year = str(datetime.today()).split()[0].split("-")[::-1]
         bot.send_message(message.chat.id, make_one_day_schedule(schedule, day), parse_mode="html")
     elif message.text == "На завтра":
+        schedule = removing_unnecessary_items(week_timetable_dict(url))
         day, month, year = str(datetime.today().date() +
                                timedelta(days=1)).split()[0].split("-")[::-1]
         bot.send_message(message.chat.id, make_one_day_schedule(schedule, day), parse_mode="html")
     elif message.text == "На текущую неделю":
-        pass
+        schedule = removing_unnecessary_items(week_timetable_dict(url))
+        bot.send_message(message.chat.id, make_week_schedule(schedule), parse_mode="html")
     elif message.text == "На следующую неделю":
-        pass
+        schedule = removing_unnecessary_items(week_timetable_dict(url, next_week=True))
+        bot.send_message(message.chat.id, make_week_schedule(schedule), parse_mode="html")
+
+
+def make_week_schedule(sched: dict[str, list]) -> str:
+    output = "Расписание на неделю\n"
+    for key, value in sched.items():
+        output += f"<em>{key}</em>\n"
+        for elem in value:
+            if "practical class" in elem[1]:
+                output += f"<b>{elem[1][:elem[1].index(' class')].strip()}</b> <u>{elem[0]}</u>\n"
+            else:
+                output += f"<b>{elem[1]}</b> <u>{elem[0]}</u>\n"
+        output += "\n"
+    return output
 
 
 def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
