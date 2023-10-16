@@ -4,25 +4,27 @@ from models import User, EducationalDirection, GroupDirection
 from parsing import week_timetable_dict, removing_unnecessary_items
 from datetime import datetime, timedelta
 import re
+from pprint import pprint
 
-db = pw.SqliteDatabase("db.sqlite3")
-bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())
+db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
+bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())  # подключение к боту
 flags_dict: dict[str, bool] = dict()
 flags_dict["choosing_group_flag"] = False
-INSTITUTE_FACULTIES = ["Мат-мех"]
-EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]
+INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
+EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
+SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]  # возможны колбэки от сообщения с настройками
 
 
 # выполнять каждый раз при тестировании и создании бота
-# db.drop_tables([User])
-# db.create_tables([User])
-# print("Database has been cleared and recreated")
+#db.drop_tables([User])
+#db.create_tables([User])
+#print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
-re.search(r"[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
+re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
 def callback_group_name(callback: telebot.types.CallbackQuery):
     group_name = callback.data
     us_id = callback.from_user.id
@@ -143,6 +145,36 @@ def choose_group_message(message: telebot.types.Message):
     bot.send_message(message.chat.id,
                      "Выберите год вашего поступления на текущее направление",
                      reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)
+def callback_program(callback: telebot.types.CallbackQuery):
+    text = callback.data
+    us_id, mes_id = callback.from_user.id, callback.message.id
+    url = list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]
+    schedule = week_timetable_dict(url)
+    duplicate_items: dict[str: list[list[str]]] = dict()
+
+    for key, value in schedule.items():
+        duplicate_items[key.split(", ")[0]] = list()
+        for i in range(len(value) - 1):
+            if (i == 0 and value[i][0] == value[i + 1][0]) or \
+                    (i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] != value[i][0]):
+                duplicate_items[key.split(", ")[0]].append(value[i])
+                duplicate_items[key.split(", ")[0]].append(value[i + 1])
+            elif i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] == value[i][0]:
+                duplicate_items[key.split(", ")[0]].append(value[i + 1])
+    
+
+# присылает в ответ сообщение с возможными настройками; добавлять их по мере роста функционала
+@bot.message_handler(commands=["settings"])
+def settings_message(message: telebot.types.Message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    # выбор своей подгруппы в дублирующихся предметах
+    markup.row(telebot.types.InlineKeyboardButton(text="Choosing subgroup",
+                                                  callback_data="Choosing subgroup"))
+    markup.row(telebot.types.InlineKeyboardButton(text="Close", callback_data="Close settings"))
+    bot.send_message(message.chat.id, "Настройки бота", reply_markup=markup)
 
 
 @bot.message_handler()
