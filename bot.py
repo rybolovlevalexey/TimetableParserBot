@@ -2,7 +2,7 @@ import telebot
 import peewee as pw
 from models import User, EducationalDirection, GroupDirection
 from parsing import week_timetable_dict, removing_unnecessary_items
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 
 db = pw.SqliteDatabase("db.sqlite3")
@@ -14,14 +14,15 @@ EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
 
+
 # выполнять каждый раз при тестировании и создании бота
-#db.drop_tables([User])
-#db.create_tables([User])
-#print("Database has been cleared and recreated")
+# db.drop_tables([User])
+# db.create_tables([User])
+# print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
-        re.search(r"[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
+re.search(r"[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
 def callback_group_name(callback: telebot.types.CallbackQuery):
     group_name = callback.data
     us_id = callback.from_user.id
@@ -148,7 +149,6 @@ def choose_group_message(message: telebot.types.Message):
 def take_message(message: telebot.types.Message):
     user_full_name = message.from_user.full_name
     us_id, user_login = message.from_user.id, message.from_user.username
-    day, month, year = str(datetime.today()).split()[0].split("-")[::-1]
     # проверка, есть ли такой пользователь в базе данных
     is_user_registred = False
     for elem in User.select():
@@ -159,19 +159,36 @@ def take_message(message: telebot.types.Message):
         bot.send_message(message.chat.id, "Вы не зарегистрированы, "
                                           "сделать это можно, используя команду /choose_group")
         return None
-    schedule = removing_unnecessary_items(week_timetable_dict(list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]))
+    schedule = removing_unnecessary_items(week_timetable_dict(
+        list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]))
+
     if message.text == "На сегодня":
-        key = list(schedule.keys())[0] if len(list(k for k in schedule.keys() if k.endswith(day))) == 0 else list(k for k in schedule.keys() if k.endswith(day))[0]
-        output = ""
-        for elem in schedule[key]:
-            output += elem[1] + " " + elem[0] + "\n\n"
-        bot.send_message(message.chat.id, output)
+        day, month, year = str(datetime.today()).split()[0].split("-")[::-1]
+        bot.send_message(message.chat.id, make_one_day_schedule(schedule, day), parse_mode="html")
     elif message.text == "На завтра":
-        pass
+        day, month, year = str(datetime.today().date() +
+                               timedelta(days=1)).split()[0].split("-")[::-1]
+        bot.send_message(message.chat.id, make_one_day_schedule(schedule, day), parse_mode="html")
     elif message.text == "На текущую неделю":
         pass
     elif message.text == "На следующую неделю":
         pass
+
+
+def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
+    output = ""
+    key = list(sched.keys())[0] if len(
+        list(k for k in sched.keys() if k.endswith(day))) == 0 else \
+        list(k for k in sched.keys() if k.endswith(day))[0]
+    if not key.endswith(day):
+        output += "В указанный день нет занятий.\n"
+    output += f"Расписание на <em>{key}</em>\n"
+    for elem in sched[key]:
+        subj_info, time_info = elem[1], elem[0]
+        if "practical class" in subj_info:
+            subj_info = subj_info[:subj_info.index(" class")].strip()
+        output += f"<b>{subj_info}</b> <u>{time_info}</u>\n"
+    return output
 
 
 if __name__ == "__main__":

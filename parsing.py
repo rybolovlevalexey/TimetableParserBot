@@ -137,4 +137,4 @@ def make_links_to_groups() -> bool:
 
 
 if __name__ == "__main__":
-    pprint(week_timetable_dict("https://timetable.spbu.ru/MATH/StudentGroupEvents/Primary/366763"))
+    pass
