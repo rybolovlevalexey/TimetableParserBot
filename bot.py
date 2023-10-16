@@ -5,6 +5,7 @@ from parsing import week_timetable_dict, removing_unnecessary_items
 from datetime import datetime, timedelta
 import re
 from pprint import pprint
+import json
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
 bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())  # подключение к боту
@@ -18,9 +19,9 @@ SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]  # возможны
 
 
 # выполнять каждый раз при тестировании и создании бота
-#db.drop_tables([User])
-#db.create_tables([User])
-#print("Database has been cleared and recreated")
+db.drop_tables([User])
+db.create_tables([User])
+print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
@@ -148,23 +149,30 @@ def choose_group_message(message: telebot.types.Message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)
-def callback_program(callback: telebot.types.CallbackQuery):
+def callback_from_settings(callback: telebot.types.CallbackQuery):
     text = callback.data
     us_id, mes_id = callback.from_user.id, callback.message.id
     url = list(elem.group_url for elem in User.select().where(User.user_id == us_id))[0]
     schedule = week_timetable_dict(url)
-    duplicate_items: dict[str: list[list[str]]] = dict()
+    duplicate_items: dict[str: dict[str: list[str]]] = dict()
 
     for key, value in schedule.items():
-        duplicate_items[key.split(", ")[0]] = list()
+        k = key.split(", ")[0]
+        duplicate_items[k] = dict()
         for i in range(len(value) - 1):
             if (i == 0 and value[i][0] == value[i + 1][0]) or \
                     (i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] != value[i][0]):
-                duplicate_items[key.split(", ")[0]].append(value[i])
-                duplicate_items[key.split(", ")[0]].append(value[i + 1])
+                # value[i][0] - время проведения
+                if value[i][0] not in duplicate_items[k].keys():
+                    duplicate_items[k][value[i][0]] = list()
+                duplicate_items[k][value[i][0]].append(value[i])
+                duplicate_items[k][value[i][0]].append(value[i + 1])
             elif i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] == value[i][0]:
-                duplicate_items[key.split(", ")[0]].append(value[i + 1])
-    
+                if value[i][0] not in duplicate_items[k].keys():
+                    duplicate_items[k][value[i][0]] = list()
+                duplicate_items[k][value[i][0]].append(value[i + 1])
+    json.dump(duplicate_items, open(f"{us_id} duplicate_items.json", "w"), indent=4)
+
 
 # присылает в ответ сообщение с возможными настройками; добавлять их по мере роста функционала
 @bot.message_handler(commands=["settings"])
