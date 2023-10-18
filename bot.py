@@ -171,7 +171,7 @@ def callback_from_settings(callback: telebot.types.CallbackQuery):
                 if value[i][0] not in duplicate_items[k].keys():
                     duplicate_items[k][value[i][0]] = list()
                 duplicate_items[k][value[i][0]].append(value[i + 1])
-    json.dump(duplicate_items, open(f"{us_id} duplicate_items.json", "w"), indent=4)
+    json.dump(duplicate_items, open(f"duplicate_items\{us_id}.json", "w"), indent=4)
 
 
 # присылает в ответ сообщение с возможными настройками; добавлять их по мере роста функционала
