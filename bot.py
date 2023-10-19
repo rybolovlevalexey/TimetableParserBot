@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import re
 from pprint import pprint
 import json
+import typing
+
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
 bot = telebot.TeleBot(open("personal information.txt").readlines()[0].strip())  # подключение к боту
@@ -150,6 +152,17 @@ def choose_group_message(message: telebot.types.Message):
                      reply_markup=markup)
 
 
+# Предоставление сообщения с выбором подгрупп
+@bot.callback_query_handler(func=lambda call: call.data == "Start choosing subgroups")
+def callback_start_choosing_subgroups(callback: telebot.types.CallbackQuery):
+    us_id, mes_id = callback.from_user.id, callback.message.id
+    markup = telebot.types.InlineKeyboardMarkup()
+    json_file = open(f"duplicate_items/{us_id}.json", "r+")
+    json_data = json.load(json_file)
+    print(sorted(json_data["Thursday"].keys()))
+    bot.edit_message_text("something hapend", callback.message.chat.id, mes_id)
+
+
 @bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)
 def callback_from_settings(callback: telebot.types.CallbackQuery):
     text = callback.data
@@ -159,25 +172,43 @@ def callback_from_settings(callback: telebot.types.CallbackQuery):
     duplicate_items: dict[str: dict[str: list[str]]] = dict()
 
     if text == "Close settings":
-        bot.delete_message(callback.message.chat.id, callback.message.id - 1)
-        bot.delete_message(callback.message.chat.id, callback.message.id)
-    elif text == "Choosing subgroup":
+        bot.delete_message(callback.message.chat.id, mes_id - 1)
+        bot.delete_message(callback.message.chat.id, mes_id)
+    elif text == "Choosing subgroup":  # открытие окна с выбором подгрупп дублирующихся предметов
         for key, value in schedule.items():
+            # key - день недели с датой, value - список с расписанием в этот день
             k = key.split(", ")[0]
-            duplicate_items[k] = dict()
-            for i in range(len(value) - 1):
+            # добавление каждого дня как ключа в словарь дубликатов, и в каждый день по ключу
+            # Is checked cловаря с флагами на каждое время
+            duplicate_items[k]: dict[str, dict[str, typing.Union[list[list[str]],
+                                                                 dict[str, bool]]]] = dict()
+            duplicate_items[k]["Is checked"]: dict[str, bool] = dict()
+
+            for i in range(len(value) - 1):  # проход по расписанию в день key
                 if (i == 0 and value[i][0] == value[i + 1][0]) or \
-                        (i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] != value[i][0]):
+                        (i > 0 and value[i][0] == value[i + 1][0] and
+                         value[i - 1][0] != value[i][0]):
                     # value[i][0] - время проведения
                     if value[i][0] not in duplicate_items[k].keys():
+                        # создание списка, если в день key и время value[i][0] не было дубликатов
                         duplicate_items[k][value[i][0]] = list()
+                        # создание флага для дня key и времени value[i][0], с целью узнать
+                        # было ли эта информация уже обработана пользователем
+                        duplicate_items[k]["Is checked"][value[i][0]] = False
                     duplicate_items[k][value[i][0]].append(value[i])
                     duplicate_items[k][value[i][0]].append(value[i + 1])
-                elif i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] == value[i][0]:
+                elif i > 0 and value[i][0] == value[i + 1][0] and value[i - 1][0] == value[i][0]:
                     if value[i][0] not in duplicate_items[k].keys():
                         duplicate_items[k][value[i][0]] = list()
                     duplicate_items[k][value[i][0]].append(value[i + 1])
-        json.dump(duplicate_items, open(f"duplicate_items\{us_id}.json", "w"), indent=4)
+        json.dump(duplicate_items, open(f"duplicate_items/{us_id}.json", "w"), indent=4)
+        markup = telebot.types.InlineKeyboardMarkup(). \
+            add(telebot.types.InlineKeyboardButton("Начать",
+                                                   callback_data="Start choosing subgroups"))
+        bot.edit_message_text("Выберите ваши подгруппы в дублирующихся предметах вашей группы.",
+                              callback.message.chat.id, callback.message.id, reply_markup=markup)
+    else:
+        pass
 
 
 # присылает в ответ сообщение с возможными настройками; добавлять их по мере роста функционала
@@ -254,5 +285,5 @@ def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
 
 
 if __name__ == "__main__":
-    #database_cleaning()
+    # database_cleaning()
     bot.polling(none_stop=True)
