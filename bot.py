@@ -153,14 +153,21 @@ def choose_group_message(message: telebot.types.Message):
 
 
 # Предоставление сообщения с выбором подгрупп
-@bot.callback_query_handler(func=lambda call: call.data == "Start choosing subgroups")
+@bot.callback_query_handler(func=lambda call: call.data == "Start choosing subgroups")  # не забыть изменить структуру сallback_data
 def callback_start_choosing_subgroups(callback: telebot.types.CallbackQuery):
     us_id, mes_id = callback.from_user.id, callback.message.id
-    markup = telebot.types.InlineKeyboardMarkup()
     json_file = open(f"duplicate_items/{us_id}.json", "r+")
     json_data = json.load(json_file)
-    print(sorted(json_data["Thursday"].keys()))
-    bot.edit_message_text("something hapend", callback.message.chat.id, mes_id)
+
+    for day_key in json_data.keys():
+        for time_key in json_data[day_key]:
+            markup = telebot.types.InlineKeyboardMarkup()
+            for elem in json_data[day_key][time_key]:
+                markup.add(telebot.types.InlineKeyboardButton(text=elem[1][:60], callback_data=elem[1][:60]))
+            markup.add(telebot.types.InlineKeyboardButton(text="Ни одна из этих подгрупп",
+                                                          callback_data="Ни одна из этих подгрупп"))
+            bot.edit_message_text(f"День {day_key} время {time_key}",
+                                  callback.message.chat.id, mes_id, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)

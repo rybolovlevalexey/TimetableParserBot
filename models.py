@@ -3,6 +3,20 @@ import peewee as pw
 db = pw.SqliteDatabase("db.sqlite3")
 
 
+class DuplicateSubject(pw.Model):
+    id = pw.PrimaryKeyField(unique=True)
+    teleg_id = pw.IntegerField()
+    name = pw.CharField()
+    time = pw.CharField()
+    teacher_name = pw.CharField(default="default_teacher_name")
+    number_class = pw.CharField(default="default_number_class")
+
+    class Meta:
+        database = db
+        order_by = "id"
+        db_table = "Duplicate subjects"
+
+
 class User(pw.Model):
     id = pw.PrimaryKeyField(unique=True)
     user_full_name = pw.CharField()
