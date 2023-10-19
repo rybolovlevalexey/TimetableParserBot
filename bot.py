@@ -8,20 +8,22 @@ from pprint import pprint
 import json
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
-bot = telebot.TeleBot(open("personal information.txt").readlines()[2].strip())  # подключение к боту
+bot = telebot.TeleBot(open("personal information.txt").readlines()[0].strip())  # подключение к боту
 flags_dict: dict[str, bool] = dict()
 flags_dict["choosing_group_flag"] = False
 INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
 EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
 EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
-SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]  # возможны колбэки от сообщения с настройками
+# возможные колбэки от сообщения с настройками
+SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]
 
 
-# выполнять каждый раз при тестировании и создании бота
-db.drop_tables([User])
-db.create_tables([User])
-print("Database has been cleared and recreated")
+def database_cleaning():
+    # выполнять каждый раз при тестировании и создании бота
+    db.drop_tables([User])
+    db.create_tables([User])
+    print("Database has been cleared and recreated")
 
 
 @bot.callback_query_handler(func=lambda call:
@@ -156,22 +158,26 @@ def callback_from_settings(callback: telebot.types.CallbackQuery):
     schedule = week_timetable_dict(url)
     duplicate_items: dict[str: dict[str: list[str]]] = dict()
 
-    for key, value in schedule.items():
-        k = key.split(", ")[0]
-        duplicate_items[k] = dict()
-        for i in range(len(value) - 1):
-            if (i == 0 and value[i][0] == value[i + 1][0]) or \
-                    (i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] != value[i][0]):
-                # value[i][0] - время проведения
-                if value[i][0] not in duplicate_items[k].keys():
-                    duplicate_items[k][value[i][0]] = list()
-                duplicate_items[k][value[i][0]].append(value[i])
-                duplicate_items[k][value[i][0]].append(value[i + 1])
-            elif i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] == value[i][0]:
-                if value[i][0] not in duplicate_items[k].keys():
-                    duplicate_items[k][value[i][0]] = list()
-                duplicate_items[k][value[i][0]].append(value[i + 1])
-    json.dump(duplicate_items, open(f"duplicate_items\{us_id}.json", "w"), indent=4)
+    if text == "Close settings":
+        bot.delete_message(callback.message.chat.id, callback.message.id - 1)
+        bot.delete_message(callback.message.chat.id, callback.message.id)
+    elif text == "Choosing subgroup":
+        for key, value in schedule.items():
+            k = key.split(", ")[0]
+            duplicate_items[k] = dict()
+            for i in range(len(value) - 1):
+                if (i == 0 and value[i][0] == value[i + 1][0]) or \
+                        (i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] != value[i][0]):
+                    # value[i][0] - время проведения
+                    if value[i][0] not in duplicate_items[k].keys():
+                        duplicate_items[k][value[i][0]] = list()
+                    duplicate_items[k][value[i][0]].append(value[i])
+                    duplicate_items[k][value[i][0]].append(value[i + 1])
+                elif i > 0 and value[i][0] == value[i + 1][0] and value[i-1][0] == value[i][0]:
+                    if value[i][0] not in duplicate_items[k].keys():
+                        duplicate_items[k][value[i][0]] = list()
+                    duplicate_items[k][value[i][0]].append(value[i + 1])
+        json.dump(duplicate_items, open(f"duplicate_items\{us_id}.json", "w"), indent=4)
 
 
 # присылает в ответ сообщение с возможными настройками; добавлять их по мере роста функционала
@@ -248,4 +254,5 @@ def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
 
 
 if __name__ == "__main__":
+    #database_cleaning()
     bot.polling(none_stop=True)
