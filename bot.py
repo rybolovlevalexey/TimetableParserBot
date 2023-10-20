@@ -4,15 +4,11 @@ from models import User, EducationalDirection, GroupDirection
 from parsing import week_timetable_dict, removing_unnecessary_items
 from datetime import datetime, timedelta
 import re
-from pprint import pprint
 import json
 import typing
 
-
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
 bot = telebot.TeleBot(open("personal information.txt").readlines()[0].strip())  # подключение к боту
-flags_dict: dict[str, bool] = dict()
-flags_dict["choosing_group_flag"] = False
 INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
 EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
@@ -25,11 +21,11 @@ def database_cleaning():
     # выполнять каждый раз при тестировании и создании бота
     db.drop_tables([User])
     db.create_tables([User])
-    print("Database has been cleared and recreated")
+    print("Table User in database has been cleared and recreated")
 
 
-@bot.callback_query_handler(func=lambda call:
-re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
+@bot.callback_query_handler(
+    func=lambda call: re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
 def callback_group_name(callback: telebot.types.CallbackQuery):
     group_name = callback.data
     us_id = callback.from_user.id
@@ -92,7 +88,7 @@ def callback_faculty(callback: telebot.types.CallbackQuery):
     query = User.update(user_faculty=faculty).where(User.user_id == us_id)
     query.execute()
     bot.send_message(callback.message.chat.id, "Выберите получаемую степень образования",
-                     reply_markup=telebot.types.InlineKeyboardMarkup(). \
+                     reply_markup=telebot.types.InlineKeyboardMarkup().
                      row(telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[0],
                                                             callback_data=EDUCATION_DEGREES[0]),
                          telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[1],
@@ -141,7 +137,6 @@ def start_message(message: telebot.types.Message):
 
 @bot.message_handler(commands=["choose_group"])
 def choose_group_message(message: telebot.types.Message):
-    flags_dict["choosing_group_flag"] = True
     markup = telebot.types.InlineKeyboardMarkup()
     for year in range(2020, 2024, 2):
         markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
@@ -152,23 +147,38 @@ def choose_group_message(message: telebot.types.Message):
                      reply_markup=markup)
 
 
+# choos_subgr-(информация о действии: start - начало обработки,
+# день + время + название + имя учителя)
 # Предоставление сообщения с выбором подгрупп
-@bot.callback_query_handler(func=lambda call: call.data == "Start choosing subgroups")  # не забыть изменить структуру сallback_data
+@bot.callback_query_handler(func=lambda
+        call: str(call.data).startswith("choos_subgr"))
 def callback_start_choosing_subgroups(callback: telebot.types.CallbackQuery):
     us_id, mes_id = callback.from_user.id, callback.message.id
     json_file = open(f"duplicate_items/{us_id}.json", "r+")
     json_data = json.load(json_file)
+    mode_callback = callback.data.split("-")[1]
+    if mode_callback == "start":
+        for day_key in json_data.keys():
+            for time_key in json_data[day_key]["Is checked"].keys():
+                json_data[day_key]["Is checked"][time_key] = False
 
     for day_key in json_data.keys():
-        for time_key in json_data[day_key]:
+        for time_key in json_data[day_key]["Is checked"].keys():
+            if json_data[day_key]["Is checked"][time_key]:
+                continue
             markup = telebot.types.InlineKeyboardMarkup()
             for elem in json_data[day_key][time_key]:
-                markup.add(telebot.types.InlineKeyboardButton(text=elem[1][:60], callback_data=elem[1][:60]))
+                btn_text = (elem[1] + elem[3])[:60]
+                markup.add(telebot.types.InlineKeyboardButton(text=btn_text,
+                                                              callback_data=btn_text))
             markup.add(telebot.types.InlineKeyboardButton(text="Ни одна из этих подгрупп",
                                                           callback_data="Ни одна из этих подгрупп"))
             bot.edit_message_text(f"День {day_key} время {time_key}",
                                   callback.message.chat.id, mes_id, reply_markup=markup)
-
+            if time_key != "Is checked":
+                break
+        if day_key == "Thursday":
+            break
 
 @bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)
 def callback_from_settings(callback: telebot.types.CallbackQuery):
