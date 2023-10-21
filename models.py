@@ -5,11 +5,8 @@ db = pw.SqliteDatabase("db.sqlite3")
 
 class DuplicateSubject(pw.Model):
     id = pw.PrimaryKeyField(unique=True)
-    teleg_id = pw.IntegerField()
     name = pw.CharField()
-    time = pw.CharField()
-    teacher_name = pw.CharField(default="default_teacher_name")
-    number_class = pw.CharField(default="default_number_class")
+    teacher_name = pw.CharField()
 
     class Meta:
         database = db

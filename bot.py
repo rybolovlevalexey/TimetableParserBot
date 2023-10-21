@@ -8,7 +8,7 @@ import json
 import typing
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
-bot = telebot.TeleBot(open("personal information.txt").readlines()[0].strip())  # подключение к боту
+bot = telebot.TeleBot(open("personal information/personal information.txt").readlines()[0].strip())
 INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
 EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
 EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
@@ -148,7 +148,8 @@ def choose_group_message(message: telebot.types.Message):
 
 
 # choos_subgr-(информация о действии: start - начало обработки,
-# день + время + название + имя учителя)
+# выбранная подгруппа - id группы из соответствующей таблицы бд,
+# ни одна из этих подгрупп - none_of_these)
 # Предоставление сообщения с выбором подгрупп
 @bot.callback_query_handler(func=lambda
         call: str(call.data).startswith("choos_subgr"))
@@ -161,7 +162,7 @@ def callback_start_choosing_subgroups(callback: telebot.types.CallbackQuery):
         for day_key in json_data.keys():
             for time_key in json_data[day_key]["Is checked"].keys():
                 json_data[day_key]["Is checked"][time_key] = False
-
+    flag = False
     for day_key in json_data.keys():
         for time_key in json_data[day_key]["Is checked"].keys():
             if json_data[day_key]["Is checked"][time_key]:
@@ -169,16 +170,19 @@ def callback_start_choosing_subgroups(callback: telebot.types.CallbackQuery):
             markup = telebot.types.InlineKeyboardMarkup()
             for elem in json_data[day_key][time_key]:
                 btn_text = (elem[1] + elem[3])[:60]
+                btn_data = ""  # не забыть исправить
                 markup.add(telebot.types.InlineKeyboardButton(text=btn_text,
-                                                              callback_data=btn_text))
+                                                              callback_data=btn_data))
             markup.add(telebot.types.InlineKeyboardButton(text="Ни одна из этих подгрупп",
-                                                          callback_data="Ни одна из этих подгрупп"))
+                                                          callback_data=
+                                                          "choos_subgr-none_of_these"))
             bot.edit_message_text(f"День {day_key} время {time_key}",
                                   callback.message.chat.id, mes_id, reply_markup=markup)
-            if time_key != "Is checked":
-                break
-        if day_key == "Thursday":
+            flag = True
             break
+        if flag:
+            break
+
 
 @bot.callback_query_handler(func=lambda call: call.data in SETTINGS_CALLBACKS)
 def callback_from_settings(callback: telebot.types.CallbackQuery):
@@ -221,7 +225,7 @@ def callback_from_settings(callback: telebot.types.CallbackQuery):
         json.dump(duplicate_items, open(f"duplicate_items/{us_id}.json", "w"), indent=4)
         markup = telebot.types.InlineKeyboardMarkup(). \
             add(telebot.types.InlineKeyboardButton("Начать",
-                                                   callback_data="Start choosing subgroups"))
+                                                   callback_data="choos_subgr-start"))
         bot.edit_message_text("Выберите ваши подгруппы в дублирующихся предметах вашей группы.",
                               callback.message.chat.id, callback.message.id, reply_markup=markup)
     else:

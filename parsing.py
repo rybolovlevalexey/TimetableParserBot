@@ -17,6 +17,13 @@ class EducationalDirectionLine:
         return f"{self.name} {self.year} {self.url}"
 
 
+# наполняет таблицу DuplicateSubject:
+# проходит по всем группам -> парсит неделю -> находит дубликаты, если их ещё нет в базе данных,
+# то добавляет их ещё и в csv-file
+def filling_table_duplicate_subjects():
+    pass
+
+
 def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
     if next_week:
         today = date.today()
@@ -40,6 +47,7 @@ def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
     return timetable
 
 
+# ждёт доработки, т.к. оставляет просто первый предмет из списка предметов в одно время
 def removing_unnecessary_items(timetable: dict[str, list]) -> dict[str, list]:
     result = dict()
     for key, value in timetable.items():
