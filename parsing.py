@@ -21,7 +21,46 @@ class EducationalDirectionLine:
 # проходит по всем группам -> парсит неделю -> находит дубликаты, если их ещё нет в базе данных,
 # то добавляет их ещё и в csv-file
 def filling_table_duplicate_subjects():
-    pass
+    for group_line in models.GroupDirection.select():
+        group_url = group_line.url
+        group_schedule = week_timetable_dict(group_url)
+        duplicates_dict = make_duplicates(group_schedule)
+        dup_subj = csv.reader(open("duplicate_subjects.csv", "r"))[1:]
+        print(*dup_subj)
+        for day in duplicates_dict.keys():
+            for time, value in duplicates_dict[day].items():
+                for subj in value:
+                    print(subj)
+                    break
+                break
+
+        break
+
+
+def make_duplicates(schedule: dict[str, list]) -> dict[str: dict[str: list[str]]]:
+    duplicate_items: dict[str: dict[str: list[str]]] = dict()
+    for key, value in schedule.items():
+        # key - день недели с датой, value - список с расписанием в этот день
+        k = key.split(", ")[0]
+        # добавление каждого дня как ключа в словарь дубликатов, и в каждый день по ключу
+        # Is checked cловаря с флагами на каждое время
+        duplicate_items[k] = dict()
+
+        for i in range(len(value) - 1):  # проход по расписанию в день key
+            if (i == 0 and value[i][0] == value[i + 1][0]) or \
+                    (i > 0 and value[i][0] == value[i + 1][0] and
+                     value[i - 1][0] != value[i][0]):
+                # value[i][0] - время проведения
+                if value[i][0] not in duplicate_items[k].keys():
+                    # создание списка, если в день key и время value[i][0] не было дубликатов
+                    duplicate_items[k][value[i][0]] = list()
+                duplicate_items[k][value[i][0]].append(value[i])
+                duplicate_items[k][value[i][0]].append(value[i + 1])
+            elif i > 0 and value[i][0] == value[i + 1][0] and value[i - 1][0] == value[i][0]:
+                if value[i][0] not in duplicate_items[k].keys():
+                    duplicate_items[k][value[i][0]] = list()
+                duplicate_items[k][value[i][0]].append(value[i + 1])
+    return duplicate_items
 
 
 def week_timetable_dict(url: str, next_week: bool = False) -> dict[str, list]:
@@ -147,4 +186,4 @@ def make_links_to_groups() -> bool:
 
 
 if __name__ == "__main__":
-    pass
+    filling_table_duplicate_subjects()
