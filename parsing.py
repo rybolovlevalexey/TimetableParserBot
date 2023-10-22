@@ -25,16 +25,18 @@ def filling_table_duplicate_subjects():
         group_url = group_line.url
         group_schedule = week_timetable_dict(group_url)
         duplicates_dict = make_duplicates(group_schedule)
-        dup_subj = csv.reader(open("duplicate_subjects.csv", "r"))[1:]
-        print(*dup_subj)
+
         for day in duplicates_dict.keys():
             for time, value in duplicates_dict[day].items():
                 for subj in value:
-                    print(subj)
-                    break
-                break
-
-        break
+                    checking_result = models.DuplicateSubject.select(
+                        models.DuplicateSubject.id).where(
+                        (models.DuplicateSubject.subject_name == subj[1]) &
+                        (models.DuplicateSubject.teacher_name == subj[-1]) &
+                        (models.DuplicateSubject.place == subj[-2])).count()
+                    print(checking_result)
+                    if checking_result:
+                        pass
 
 
 def make_duplicates(schedule: dict[str, list]) -> dict[str: dict[str: list[str]]]:
