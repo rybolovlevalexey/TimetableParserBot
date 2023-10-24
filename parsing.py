@@ -187,5 +187,34 @@ def make_links_to_groups() -> bool:
     return True
 
 
+def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
+    output = ""
+    key = list(sched.keys())[0] if len(
+        list(k for k in sched.keys() if k.endswith(day))) == 0 else \
+        list(k for k in sched.keys() if k.endswith(day))[0]
+    if not key.endswith(day):
+        output += "В указанный день нет занятий.\n"
+    output += f"Расписание на <em>{key}</em>\n"
+    for elem in sched[key]:
+        subj_info, time_info = elem[1], elem[0]
+        if "practical class" in subj_info:
+            subj_info = subj_info[:subj_info.index(" class")].strip()
+        output += f"<b>{subj_info}</b> <u>{time_info}</u>\n"
+    return output
+
+
+def make_week_schedule(sched: dict[str, list]) -> str:
+    output = "Расписание на неделю\n"
+    for key, value in sched.items():
+        output += f"<em>{key}</em>\n"
+        for elem in value:
+            if "practical class" in elem[1]:
+                output += f"<b>{elem[1][:elem[1].index(' class')].strip()}</b> <u>{elem[0]}</u>\n"
+            else:
+                output += f"<b>{elem[1]}</b> <u>{elem[0]}</u>\n"
+        output += "\n"
+    return output
+
+
 if __name__ == "__main__":
     filling_table_duplicate_subjects()

@@ -1,7 +1,8 @@
 import telebot
 import peewee as pw
 from models import User, EducationalDirection, GroupDirection
-from parsing import week_timetable_dict, removing_unnecessary_items
+from parsing import week_timetable_dict, removing_unnecessary_items, \
+    make_one_day_schedule, make_week_schedule
 from datetime import datetime, timedelta
 import re
 import json
@@ -276,35 +277,6 @@ def take_message(message: telebot.types.Message):
         bot.send_message(message.chat.id, make_week_schedule(schedule), parse_mode="html")
 
 
-def make_week_schedule(sched: dict[str, list]) -> str:
-    output = "Расписание на неделю\n"
-    for key, value in sched.items():
-        output += f"<em>{key}</em>\n"
-        for elem in value:
-            if "practical class" in elem[1]:
-                output += f"<b>{elem[1][:elem[1].index(' class')].strip()}</b> <u>{elem[0]}</u>\n"
-            else:
-                output += f"<b>{elem[1]}</b> <u>{elem[0]}</u>\n"
-        output += "\n"
-    return output
-
-
-def make_one_day_schedule(sched: dict[str, list], day: str) -> str:
-    output = ""
-    key = list(sched.keys())[0] if len(
-        list(k for k in sched.keys() if k.endswith(day))) == 0 else \
-        list(k for k in sched.keys() if k.endswith(day))[0]
-    if not key.endswith(day):
-        output += "В указанный день нет занятий.\n"
-    output += f"Расписание на <em>{key}</em>\n"
-    for elem in sched[key]:
-        subj_info, time_info = elem[1], elem[0]
-        if "practical class" in subj_info:
-            subj_info = subj_info[:subj_info.index(" class")].strip()
-        output += f"<b>{subj_info}</b> <u>{time_info}</u>\n"
-    return output
-
-
 if __name__ == "__main__":
-    # database_cleaning()
+    database_cleaning()
     bot.polling(none_stop=True)
