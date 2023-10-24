@@ -1,5 +1,6 @@
 import telebot
 import peewee as pw
+import choose_group_handlers
 from models import User, EducationalDirection, GroupDirection
 from parsing import week_timetable_dict, removing_unnecessary_items, \
     make_one_day_schedule, make_week_schedule
@@ -25,107 +26,6 @@ def database_cleaning():
     print("Table User in database has been cleared and recreated")
 
 
-@bot.callback_query_handler(
-    func=lambda call: re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
-def callback_group_name(callback: telebot.types.CallbackQuery):
-    group_name = callback.data
-    us_id = callback.from_user.id
-    User.update(group_number=group_name).where(User.user_id == us_id).execute()
-    bot.send_message(callback.message.chat.id, f"Ваша группа - {group_name}. "
-                                               f"Информация о вашей группе сохранена")
-    url = list(elem.url for elem in
-               GroupDirection.select().
-               where(GroupDirection.group_name == group_name))[0]
-    User.update(group_url=url).where(User.user_id == us_id).execute()
-
-
-@bot.callback_query_handler(func=lambda call: call.data in EDUCATION_PROGRAMS_SHORT)
-def callback_program(callback: telebot.types.CallbackQuery):
-    program = callback.data
-    bot.send_message(callback.message.chat.id, f"Ваше направление образования - {program}")
-    us_id = callback.from_user.id
-    User.update(education_program=program).where(User.user_id == us_id).execute()
-    program_name = list(elem for elem in EDUCATION_PROGRAMS if str(elem).startswith(program))[0]
-    year = list(elem.admission_year for elem in User.select().where(User.user_id == us_id))[0]
-
-    prog_id = list(elem.id for elem in EducationalDirection.select().where(
-        (EducationalDirection.name == program_name) & (EducationalDirection.year == year)))[0]
-    available_groups = list(elem.group_name for elem in GroupDirection.select().where(
-        GroupDirection.educational_program_id == prog_id))
-    markup = telebot.types.InlineKeyboardMarkup()
-    for i in range(0, len(available_groups), 2):
-        if i + 1 == len(available_groups):
-            markup.row(telebot.types.InlineKeyboardButton(available_groups[i]))
-        else:
-            markup.row(telebot.types.InlineKeyboardButton(text=available_groups[i],
-                                                          callback_data=available_groups[i]),
-                       telebot.types.InlineKeyboardButton(text=available_groups[i + 1],
-                                                          callback_data=available_groups[i + 1]))
-    bot.send_message(callback.message.chat.id, "Выберите вашу группу", reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda call: call.data in EDUCATION_DEGREES)
-def callback_degree(callback: telebot.types.CallbackQuery):
-    degree = callback.data
-    chat_id = callback.message.chat.id
-    bot.send_message(chat_id, f"Ваша получаемая степень образования - {degree}")
-    us_id = callback.from_user.id
-    User.update(education_degree=degree).where(User.user_id == us_id).execute()
-    markup = telebot.types.InlineKeyboardMarkup()
-    for name in EDUCATION_PROGRAMS_SHORT:
-        markup.row(telebot.types.InlineKeyboardButton(text=str(name),
-                                                      callback_data=str(name)))
-    bot.send_message(chat_id, "Выберите ваше образовательное направление",
-                     reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda call: call.data in INSTITUTE_FACULTIES)
-def callback_faculty(callback: telebot.types.CallbackQuery):
-    # получение информации о факультете пользователя
-    faculty = callback.data
-    bot.send_message(callback.message.chat.id, f"Ваш факультет - {faculty}")
-    us_id = callback.from_user.id
-    # обновление информации в базе данных
-    query = User.update(user_faculty=faculty).where(User.user_id == us_id)
-    query.execute()
-    bot.send_message(callback.message.chat.id, "Выберите получаемую степень образования",
-                     reply_markup=telebot.types.InlineKeyboardMarkup().
-                     row(telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[0],
-                                                            callback_data=EDUCATION_DEGREES[0]),
-                         telebot.types.InlineKeyboardButton(text=EDUCATION_DEGREES[1],
-                                                            callback_data=EDUCATION_DEGREES[1])))
-
-
-@bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
-def callback_year(callback: telebot.types.CallbackQuery):
-    # отправка ответного сообщения пользователю
-    bot.send_message(callback.message.chat.id, f"Год вашего поступления на текущую "
-                                               f"образовательную программу - {callback.data}")
-    # получение информации о пользователе
-    year = callback.data  # год поступления пользователя
-    user_full_name = callback.from_user.full_name
-    user_id = callback.from_user.id
-    user_login = callback.from_user.username
-    # сохранение в базу данных нового пользователя
-    query = User.insert(user_id=user_id, user_full_name=user_full_name, user_login=user_login,
-                        admission_year=year)
-    query.execute()
-
-    # отправка следующего сообщения, чтобы узнать факультет
-    markup = telebot.types.InlineKeyboardMarkup()
-    for i in range(0, len(INSTITUTE_FACULTIES), 2):
-        elem1 = INSTITUTE_FACULTIES[i]
-        if i + 1 == len(INSTITUTE_FACULTIES):
-            markup.row(telebot.types.InlineKeyboardButton(text=elem1, callback_data=elem1))
-        else:
-            elem2 = INSTITUTE_FACULTIES[i + 1]
-            markup.row(telebot.types.InlineKeyboardButton(text=elem1, callback_data=elem1),
-                       telebot.types.InlineKeyboardButton(text=elem2, callback_data=elem2))
-    bot.send_message(callback.message.chat.id,
-                     "Выберите ваш факультет",
-                     reply_markup=markup)
-
-
 @bot.message_handler(commands=["start"])
 def start_message(message: telebot.types.Message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=False)
@@ -137,7 +37,8 @@ def start_message(message: telebot.types.Message):
 
 
 @bot.message_handler(commands=["choose_group"])
-def choose_group_message(message: telebot.types.Message):
+def choose_group_message_begin(bot: telebot.TeleBot, message: telebot.types.Message):
+    # начало добавления группы пользователя, надо сделать проверку - есть ли уже в базе пользователь
     markup = telebot.types.InlineKeyboardMarkup()
     for year in range(2020, 2024, 2):
         markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
@@ -146,6 +47,24 @@ def choose_group_message(message: telebot.types.Message):
     bot.send_message(message.chat.id,
                      "Выберите год вашего поступления на текущее направление",
                      reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
+@bot.callback_query_handler(func=lambda call: call.data in INSTITUTE_FACULTIES or
+                            call.data in EDUCATION_DEGREES or call.data in EDUCATION_PROGRAMS_SHORT)
+@bot.callback_query_handler(
+    func=lambda call: re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", call.data) is not None)
+def choose_group_message(callback: telebot.types.CallbackQuery):
+    if callback.data.isdigit() and len(callback.data) == 4:
+        choose_group_handlers.callback_year(bot=bot, callback=callback)
+    elif callback.data in INSTITUTE_FACULTIES:
+        choose_group_handlers.callback_faculty(bot=bot, callback=callback)
+    elif callback.data in EDUCATION_DEGREES:
+        choose_group_handlers.callback_degree(bot=bot, callback=callback)
+    elif callback.data in EDUCATION_PROGRAMS_SHORT:
+        choose_group_handlers.callback_program(bot=bot, callback=callback)
+    elif re.search(r"\b[0-9][0-9]\.[БМ][0-9][0-9]-[а-я]+", callback.data) is not None:
+        choose_group_handlers.callback_group_name(bot=bot, callback=callback)
 
 
 # choos_subgr-(информация о действии: start - начало обработки,
