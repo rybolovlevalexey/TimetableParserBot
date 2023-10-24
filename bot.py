@@ -8,15 +8,10 @@ from datetime import datetime, timedelta
 import re
 import json
 import typing
+from main import *
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
 bot = telebot.TeleBot(open("personal information/personal information.txt").readlines()[0].strip())
-INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
-EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
-EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
-EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))
-# возможные колбэки от сообщения с настройками
-SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]
 
 
 def database_cleaning():
@@ -37,7 +32,7 @@ def start_message(message: telebot.types.Message):
 
 
 @bot.message_handler(commands=["choose_group"])
-def choose_group_message_begin(bot: telebot.TeleBot, message: telebot.types.Message):
+def choose_group_message_begin(message: telebot.types.Message):
     # начало добавления группы пользователя, надо сделать проверку - есть ли уже в базе пользователь
     markup = telebot.types.InlineKeyboardMarkup()
     for year in range(2020, 2024, 2):

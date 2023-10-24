@@ -1,4 +1,8 @@
-import models
+from models import EducationalDirection
 
-with models.database:
-    models.database.create_tables([models.EducationalDirection, models.GroupDirection])
+# возможные callback от сообщения с настройками
+SETTINGS_CALLBACKS = ["Close settings", "Choosing subgroup"]
+INSTITUTE_FACULTIES = ["Мат-мех"]  # список с факультетами, необходимо расширить в будущем
+EDUCATION_DEGREES = ["Бакалавриат", "Магистратура"]  # список степеней образования
+EDUCATION_PROGRAMS = sorted(set(elem.name for elem in EducationalDirection.select()))
+EDUCATION_PROGRAMS_SHORT = list(map(lambda x: x[:60], EDUCATION_PROGRAMS))

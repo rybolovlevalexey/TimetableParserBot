@@ -1,23 +1,26 @@
 import telebot
 from models import User, EducationalDirection, GroupDirection
-from bot import EDUCATION_DEGREES, EDUCATION_PROGRAMS, EDUCATION_PROGRAMS_SHORT, INSTITUTE_FACULTIES
+from main import EDUCATION_DEGREES, EDUCATION_PROGRAMS, \
+    EDUCATION_PROGRAMS_SHORT, INSTITUTE_FACULTIES
 
 
 def callback_group_name(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery):
     group_name = callback.data
     us_id = callback.from_user.id
     User.update(group_number=group_name).where(User.user_id == us_id).execute()
-    bot.send_message(callback.message.chat.id, f"Ваша группа - {group_name}. "
-                                               f"Информация о вашей группе сохранена")
+    bot.edit_message_text(f"Ваша группа - {group_name}. "
+                          f"Информация о вашей группе сохранена",
+                          message_id=callback.message.id, chat_id=callback.message.chat.id)
     url = list(elem.url for elem in
                GroupDirection.select().
                where(GroupDirection.group_name == group_name))[0]
     User.update(group_url=url).where(User.user_id == us_id).execute()
 
 
-def callback_program(bot:telebot.TeleBot, callback: telebot.types.CallbackQuery):
+def callback_program(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery):
     program = callback.data
-    bot.send_message(callback.message.chat.id, f"Ваше направление образования - {program}")
+    bot.edit_message_text(f"Ваше направление образования - {program}",
+                          chat_id=callback.message.chat.id, message_id=callback.message.id)
     us_id = callback.from_user.id
     User.update(education_program=program).where(User.user_id == us_id).execute()
     program_name = list(elem for elem in EDUCATION_PROGRAMS if str(elem).startswith(program))[0]
@@ -42,7 +45,8 @@ def callback_program(bot:telebot.TeleBot, callback: telebot.types.CallbackQuery)
 def callback_degree(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery):
     degree = callback.data
     chat_id = callback.message.chat.id
-    bot.send_message(chat_id, f"Ваша получаемая степень образования - {degree}")
+    bot.edit_message_text(f"Ваша получаемая степень образования - {degree}",
+                          chat_id=chat_id, message_id=callback.message.id)
     us_id = callback.from_user.id
     User.update(education_degree=degree).where(User.user_id == us_id).execute()
     markup = telebot.types.InlineKeyboardMarkup()
@@ -56,7 +60,8 @@ def callback_degree(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery)
 def callback_faculty(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery):
     # получение информации о факультете пользователя
     faculty = callback.data
-    bot.send_message(callback.message.chat.id, f"Ваш факультет - {faculty}")
+    bot.edit_message_text(f"Ваш факультет - {faculty}",
+                          chat_id=callback.message.chat.id, message_id=callback.message.id)
     us_id = callback.from_user.id
     # обновление информации в базе данных
     query = User.update(user_faculty=faculty).where(User.user_id == us_id)
@@ -71,8 +76,9 @@ def callback_faculty(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery
 
 def callback_year(bot: telebot.TeleBot, callback: telebot.types.CallbackQuery):
     # отправка ответного сообщения пользователю
-    bot.send_message(callback.message.chat.id, f"Год вашего поступления на текущую "
-                                               f"образовательную программу - {callback.data}")
+    bot.edit_message_text(f"Год вашего поступления на текущую "
+                          f"образовательную программу - {callback.data}",
+                          chat_id=callback.message.chat.id, message_id=callback.message.id)
     # получение информации о пользователе
     year = callback.data  # год поступления пользователя
     user_full_name = callback.from_user.full_name
