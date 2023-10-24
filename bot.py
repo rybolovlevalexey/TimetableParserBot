@@ -1,3 +1,4 @@
+import peewee
 import telebot
 import peewee as pw
 import choose_group_handlers
@@ -9,6 +10,7 @@ import re
 import json
 import typing
 from main import *
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 db = pw.SqliteDatabase("db.sqlite3")  # база данных с пользователями и ссылками на группы
 bot = telebot.TeleBot(open("personal information/personal information.txt").readlines()[0].strip())
@@ -33,7 +35,25 @@ def start_message(message: telebot.types.Message):
 
 @bot.message_handler(commands=["choose_group"])
 def choose_group_message_begin(message: telebot.types.Message):
-    # начало добавления группы пользователя, надо сделать проверку - есть ли уже в базе пользователь
+    # проверка - есть ли уже в базе пользователь
+    us_id = message.from_user.id
+    result = list(elem for elem in User.select().where(User.user_id == us_id))
+    if len(result) == 1:
+        res: User = result[0]
+        if res.group_url != "default_url" and res.group_number != "default_group_number":
+            # пользователь уже прошёл полную регистрацию
+            text1 = "Оставить выбранную группу"
+            text2 = "Начать регистрацию сначала"
+            mark = InlineKeyboardMarkup().row(InlineKeyboardButton(text=text1, callback_data=text1),
+                                              InlineKeyboardButton(text=text2, callback_data=text2))
+            bot.send_message(message.chat.id,
+                             "Вы уже проходили регистрацию и информация"
+                             " о вашей группе уже сохранена. Хотите удалить эти данные и "
+                             "начать регистрацию заново?",
+                             reply_markup=mark)
+        else:
+            pass
+    # начало добавления группы пользователя
     markup = telebot.types.InlineKeyboardMarkup()
     for year in range(2020, 2024, 2):
         markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
@@ -192,5 +212,5 @@ def take_message(message: telebot.types.Message):
 
 
 if __name__ == "__main__":
-    database_cleaning()
+    # database_cleaning()
     bot.polling(none_stop=True)

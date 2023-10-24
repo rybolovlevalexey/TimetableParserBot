@@ -27,6 +27,10 @@ class User(pw.Model):
     education_degree = pw.CharField(default="default_degree")
     education_program = pw.CharField(default="default_program")
 
+    def __str__(self):
+        return f"User: id-{self.user_id} user_login-{self.user_login}\n" \
+               f"{self.admission_year} {self.user_faculty} {self.group_number}"
+
     class Meta:
         database = db
         order_by = "id"
