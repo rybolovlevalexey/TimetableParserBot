@@ -33,10 +33,18 @@ def start_message(message: telebot.types.Message):
     bot.send_message(message.chat.id, "Бот начал работу", reply_markup=markup)
 
 
+@bot.callback_query_handler(func=lambda call: call.data in
+                            ["Оставить выбранную группу", "Начать регистрацию сначала",
+                             "Продолжить заполнение, начатое ранее"])
+def choose_group_one_more_time(message: telebot.types.Message):
+    pass
+
+
 @bot.message_handler(commands=["choose_group"])
 def choose_group_message_begin(message: telebot.types.Message):
     # проверка - есть ли уже в базе пользователь
     us_id = message.from_user.id
+    chat_id = message.chat.id
     result = list(elem for elem in User.select().where(User.user_id == us_id))
     if len(result) == 1:
         res: User = result[0]
@@ -44,24 +52,28 @@ def choose_group_message_begin(message: telebot.types.Message):
             # пользователь уже прошёл полную регистрацию
             text1 = "Оставить выбранную группу"
             text2 = "Начать регистрацию сначала"
-            mark = InlineKeyboardMarkup().row(InlineKeyboardButton(text=text1, callback_data=text1),
-                                              InlineKeyboardButton(text=text2, callback_data=text2))
-            bot.send_message(message.chat.id,
-                             "Вы уже проходили регистрацию и информация"
-                             " о вашей группе уже сохранена. Хотите удалить эти данные и "
-                             "начать регистрацию заново?",
-                             reply_markup=mark)
+            text_main = "Вы уже проходили регистрацию и информация " \
+                        "о вашей группе уже сохранена. Хотите удалить эти данные и " \
+                        "начать регистрацию заново?"
         else:
-            pass
-    # начало добавления группы пользователя
-    markup = telebot.types.InlineKeyboardMarkup()
-    for year in range(2020, 2024, 2):
-        markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
-                   telebot.types.InlineKeyboardButton(text=str(year + 1),
-                                                      callback_data=str(year + 1)))
-    bot.send_message(message.chat.id,
-                     "Выберите год вашего поступления на текущее направление",
-                     reply_markup=markup)
+            # пользователь не закончил прохождение регистрации
+            text1 = "Продолжить заполнение"
+            text2 = "Начать регистрацию сначала"
+            text_main = "Вы уже проходили регистрацию, поэтому у нас есть некоторая " \
+                        "информация о вас."
+        mark = InlineKeyboardMarkup().row(InlineKeyboardButton(text=text1, callback_data=text1),
+                                          InlineKeyboardButton(text=text2, callback_data=text2))
+        bot.send_message(chat_id, text_main, reply_markup=mark)
+    else:
+        # начало добавления группы пользователя
+        markup = telebot.types.InlineKeyboardMarkup()
+        for year in range(2020, 2024, 2):
+            markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
+                       telebot.types.InlineKeyboardButton(text=str(year + 1),
+                                                          callback_data=str(year + 1)))
+        bot.send_message(message.chat.id,
+                         "Выберите год вашего поступления на текущее направление",
+                         reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.isdigit() and len(call.data) == 4)
