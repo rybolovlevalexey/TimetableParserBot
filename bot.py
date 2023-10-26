@@ -1,4 +1,3 @@
-import peewee
 import telebot
 import peewee as pw
 import choose_group_handlers
@@ -35,9 +34,40 @@ def start_message(message: telebot.types.Message):
 
 @bot.callback_query_handler(func=lambda call: call.data in
                             ["Оставить выбранную группу", "Начать регистрацию сначала",
-                             "Продолжить заполнение, начатое ранее"])
-def choose_group_one_more_time(message: telebot.types.Message):
-    pass
+                             "Продолжить заполнение"])
+def choose_group_one_more_time(callback: telebot.types.CallbackQuery):
+    mes_text = str(callback.data)
+    mes_id, chat_id, us_id = callback.message.id, callback.message.chat.id, callback.from_user.id
+
+    if mes_text == "Оставить выбранную группу":
+        group_name = list(elem.group_number for elem in User.select().where(User.user_id == us_id))
+        bot.send_message(chat_id=chat_id, text=f"Ваша группа остаётся прежней {group_name[0]}")
+    elif mes_text == "Начать регистрацию сначала":
+        query = User.update(group_url="default_url", admission_year="default_year",
+                            user_faculty="default_faculty", group_number="default_group_number",
+                            education_degree="default_degree",
+                            education_program="default_program").where(User.user_id == us_id)
+        query.execute()
+        bot.send_message(chat_id=chat_id, text=f"Регистрация начата заново")
+        choose_group_message_begin_again(callback)
+    elif mes_text == "Продолжить заполнение":
+        pass
+
+
+def choose_group_message_begin_again(callback: telebot.types.CallbackQuery):
+    # начало добавления группы пользователя при получении не /сообщения, а callback
+    markup = telebot.types.InlineKeyboardMarkup()
+    for ind in range(0, len(YEARS), 2):
+        year = YEARS[ind]
+        if year + 1 in YEARS:
+            markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)),
+                       telebot.types.InlineKeyboardButton(text=str(year + 1),
+                                                          callback_data=str(year + 1)))
+        else:
+            markup.row(telebot.types.InlineKeyboardButton(text=str(year), callback_data=str(year)))
+    bot.send_message(callback.message.chat.id,
+                     "Выберите год вашего поступления на текущее направление",
+                     reply_markup=markup)
 
 
 @bot.message_handler(commands=["choose_group"])
@@ -46,7 +76,7 @@ def choose_group_message_begin(message: telebot.types.Message):
     us_id = message.from_user.id
     chat_id = message.chat.id
     result = list(elem for elem in User.select().where(User.user_id == us_id))
-    if len(result) == 1:
+    if len(result) == 1 and result[0].admission_year != "default_year":
         res: User = result[0]
         if res.group_url != "default_url" and res.group_number != "default_group_number":
             # пользователь уже прошёл полную регистрацию
@@ -142,6 +172,9 @@ def callback_from_settings(callback: telebot.types.CallbackQuery):
     if text == "Close settings":
         bot.delete_message(callback.message.chat.id, mes_id - 1)
         bot.delete_message(callback.message.chat.id, mes_id)
+    elif text == "Delete account":
+        # cделать удаление аккаунта
+        pass
     elif text == "Choosing subgroup":  # открытие окна с выбором подгрупп дублирующихся предметов
         for key, value in schedule.items():
             # key - день недели с датой, value - список с расписанием в этот день
@@ -186,6 +219,8 @@ def settings_message(message: telebot.types.Message):
     # выбор своей подгруппы в дублирующихся предметах
     markup.row(telebot.types.InlineKeyboardButton(text="Choosing subgroup",
                                                   callback_data="Choosing subgroup"))
+    markup.row(telebot.types.InlineKeyboardButton(text="Delete account",
+                                                  callback_data="Delete account"))
     markup.row(telebot.types.InlineKeyboardButton(text="Close", callback_data="Close settings"))
     bot.send_message(message.chat.id, "Настройки бота", reply_markup=markup)
 
@@ -224,5 +259,5 @@ def take_message(message: telebot.types.Message):
 
 
 if __name__ == "__main__":
-    # database_cleaning()
+    database_cleaning()
     bot.polling(none_stop=True)
