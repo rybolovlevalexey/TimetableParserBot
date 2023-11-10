@@ -3,6 +3,17 @@ import peewee as pw
 db = pw.SqliteDatabase("db.sqlite3")
 
 
+class WebUser(pw.Model):
+    id = pw.PrimaryKeyField(unique=True)
+    login = pw.CharField()
+    group_name = pw.CharField()
+
+    class Meta:
+        database = db
+        order_by = "id"
+        db_table = "WebUser from Api"
+
+
 class DuplicateSubject(pw.Model):
     id = pw.PrimaryKeyField(unique=True)
     subject_name = pw.CharField()
